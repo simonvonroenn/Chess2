@@ -4,7 +4,23 @@ public class Chessboard {
 
     private PApplet sketch;
 
-    public Chessboard(PApplet sketch, float x, float y) {
+    private static final int TILE_SIZE = Chess2.BOARD_SIZE / 8;
+
+    public Chessboard(PApplet sketch) {
         this.sketch = sketch;
+    }
+
+    public void load() {
+        sketch.noStroke();
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (((j%2)+i+1)%2 == 0) {
+                    sketch.fill(240, 217, 181);
+                } else {
+                    sketch.fill(181, 136, 99);
+                }
+                sketch.rect(i * TILE_SIZE, j * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
     }
 }

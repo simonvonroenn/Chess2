@@ -6,10 +6,16 @@ public class Chessboard {
 
     private static final int TILE_SIZE = Chess2.BOARD_SIZE / 8;
 
+    /**
+     * The Chessboard constructor integrates Processing in Java.
+     */
     public Chessboard(PApplet sketch) {
         this.sketch = sketch;
     }
 
+    /**
+     * The load method (re)loads the chess board.
+     */
     public void load() {
         sketch.noStroke();
         for (int i = 0; i < 8; i++) {

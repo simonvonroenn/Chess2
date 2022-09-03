@@ -2,15 +2,18 @@ import processing.core.PApplet;
 
 public class Chessboard {
 
-    private PApplet sketch;
+    private final PApplet sketch;
 
     private static final int TILE_SIZE = Chess2.BOARD_SIZE / 8;
+
+    private String position;
 
     /**
      * The Chessboard constructor integrates Processing in Java.
      */
-    public Chessboard(PApplet sketch) {
+    public Chessboard(PApplet sketch, String position) {
         this.sketch = sketch;
+        this.position = position;
     }
 
     /**

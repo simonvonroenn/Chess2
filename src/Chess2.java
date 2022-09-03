@@ -2,10 +2,13 @@ import processing.core.PApplet;
 
 public class Chess2 extends PApplet {
 
+    /** The starting position. */
+    public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
     /** The size of the chess board in pixel */
     public static final int BOARD_SIZE = 800;
 
-    private Chessboard board = new Chessboard(this);
+    private Chessboard board = new Chessboard(this, FEN);
 
     /**
      * The settings method runs once at the beginning of execution.

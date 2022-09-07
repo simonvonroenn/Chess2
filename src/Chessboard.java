@@ -1,10 +1,14 @@
 import processing.core.PApplet;
 
+import java.util.Arrays;
+
 public class Chessboard {
 
     private final PApplet sketch;
 
     private static final int TILE_SIZE = Chess2.BOARD_SIZE / 8;
+
+    private final char[][] board = new char[8][8];
 
     private String position;
 
@@ -14,6 +18,24 @@ public class Chessboard {
     public Chessboard(PApplet sketch, String position) {
         this.sketch = sketch;
         this.position = position;
+    }
+
+    /**
+     * The loadPosition method loads the starting position at the beginning.
+     */
+    public void loadPosition() {
+        String[] rows = Chess2.FEN.split(" ")[0].split("/");
+        for (int i = 0; i < 8; i++) {
+            int j = 0;
+            while (j < rows[i].length()) {
+                if (Character.isDigit(rows[i].charAt(j))) {
+                    j += Character.getNumericValue(rows[i].charAt(j));
+                } else {
+                    board[i][j] = rows[i].charAt(j);
+                    j++;
+                }
+            }
+        }
     }
 
     /**

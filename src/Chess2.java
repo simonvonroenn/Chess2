@@ -15,6 +15,7 @@ public class Chess2 extends PApplet {
      */
     public void settings(){
         size(BOARD_SIZE, BOARD_SIZE);
+        board.loadPosition();
     }
 
     /**

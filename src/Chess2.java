@@ -8,7 +8,7 @@ public class Chess2 extends PApplet {
     /** The size of the chess board in pixel */
     public static final int BOARD_SIZE = 800;
 
-    private Chessboard board = new Chessboard(this, FEN);
+    private Chessboard board = new Chessboard(this);
 
     /**
      * The settings method runs once at the beginning of execution.
@@ -16,14 +16,13 @@ public class Chess2 extends PApplet {
     public void settings(){
         size(BOARD_SIZE, BOARD_SIZE);
         board.loadPosition();
+        board.loadImages();
     }
 
     /**
      * The draw method runs continously.
      */
     public void draw(){
-        scale(1, -1);
-        translate(0, -height);
         board.load();
     }
 

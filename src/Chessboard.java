@@ -7,6 +7,7 @@ public class Chessboard {
 
     private final PApplet sketch;
 
+    /** The size of each tile in pixel. */
     private static final int TILE_SIZE = Chess2.BOARD_SIZE / 8;
 
     private final char[][] board = new char[8][8];
@@ -73,7 +74,7 @@ public class Chessboard {
                 }
                 sketch.rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 if (Character.isLetter(board[i][j])) {
-                    sketch.image(images.get(board[i][j]), j * 100, i * 100, 100, 100);
+                    sketch.image(images.get(board[i][j]), j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
         }

@@ -8,11 +8,12 @@ public class Chessboard {
     private final PApplet sketch;
 
     /** The size of each tile in pixel. */
-    private static final int TILE_SIZE = Chess2.BOARD_SIZE / 8;
+    public static final int TILE_SIZE = Chess2.BOARD_SIZE / 8;
 
     private final char[][] board = new char[8][8];
 
     private Map<Character, PImage> images;
+    private int pieceClicked = -1;
 
     /**
      * The Chessboard constructor integrates Processing in Java.
@@ -67,10 +68,12 @@ public class Chessboard {
         sketch.noStroke();
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
-                if (((j%2)+i+1)%2 == 0) {
-                    sketch.fill(181, 136, 99);
+                if (i * 8 + j == pieceClicked) {
+                    sketch.fill(129, 183, 131); // clicked piece
+                } else if (((j%2)+i+1)%2 == 0) {
+                    sketch.fill(181, 136, 99); // dark squares
                 } else {
-                    sketch.fill(240, 217, 181);
+                    sketch.fill(240, 217, 181); // light squares
                 }
                 sketch.rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 if (Character.isLetter(board[i][j])) {
@@ -78,5 +81,24 @@ public class Chessboard {
                 }
             }
         }
+    }
+
+    /**
+     * The calcLegalMoves method calculates for an individual piece, which legal moves it has.
+     *
+     * @param row the row, where the piece is
+     * @param col the column, where the piece is
+     */
+    public void calcLegalMoves(int row, int col) {
+        char piece = board[row][col];
+        if (Character.isLetter(piece) && row * 8 + col != pieceClicked) {
+            pieceClicked = row * 8 + col;
+        } else {
+            resetPieceClicked();
+        }
+    }
+
+    public void resetPieceClicked() {
+        this.pieceClicked = -1;
     }
 }

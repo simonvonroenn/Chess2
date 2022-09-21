@@ -26,6 +26,14 @@ public class Chess2 extends PApplet {
         board.load();
     }
 
+    public void mouseClicked() {
+        if (mouseX < BOARD_SIZE && mouseY < BOARD_SIZE && mouseButton == LEFT) {
+            board.calcLegalMoves(mouseY / Chessboard.TILE_SIZE, mouseX / Chessboard.TILE_SIZE);
+        } else {
+            board.resetPieceClicked();
+        }
+    }
+
     /**
      * The main method integrates Processing in Java.
      */

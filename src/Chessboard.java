@@ -1,6 +1,8 @@
 import processing.core.PApplet;
 import processing.core.PImage;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 public class Chessboard {
@@ -13,17 +15,19 @@ public class Chessboard {
     private final char[][] board = new char[8][8];
 
     private Map<Character, PImage> images;
-    private int pieceClicked = -1;
+    private int selectedRow, selectedCol = -1;
+    private boolean whiteToMove = true;
+    private List<int[]> legalMoves;
 
     /**
-     * The Chessboard constructor integrates Processing in Java.
+     * Integrates Processing in Java.
      */
     public Chessboard(PApplet sketch) {
         this.sketch = sketch;
     }
 
     /**
-     * The loadPosition method loads the starting position at the beginning.
+     *Loads the starting position at the beginning.
      */
     public void loadPosition() {
         String[] rows = Chess2.FEN.split(" ")[0].split("/");
@@ -40,7 +44,7 @@ public class Chessboard {
     }
 
     /**
-     * The loadImages() method loads the images of the pieces.
+     * Loads the images of the pieces.
      */
     public void loadImages() {
         String baseURL = "/src/Resources/Images/";
@@ -62,43 +66,122 @@ public class Chessboard {
     }
 
     /**
-     * The load method (re)loads the chess board.
+     * (Re)Loads the chess board.
      */
     public void load() {
+        int lum; // luminosity - highlights legal moves
         sketch.noStroke();
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                if (i * 8 + j == pieceClicked) {
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                lum = isLegalMove(row, col) ? 50 : 0;
+                if (row == selectedRow && col == selectedCol) {
                     sketch.fill(129, 183, 131); // clicked piece
-                } else if (((j%2)+i+1)%2 == 0) {
-                    sketch.fill(181, 136, 99); // dark squares
+                } else if (((col%2)+row+1)%2 == 0) {
+                    sketch.fill(181 + lum, 136 + lum, 99 + lum); // dark squares
                 } else {
-                    sketch.fill(240, 217, 181); // light squares
+                    sketch.fill(240 + lum, 217 + lum, 181 + lum); // light squares
                 }
-                sketch.rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                if (Character.isLetter(board[i][j])) {
-                    sketch.image(images.get(board[i][j]), j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                sketch.rect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                if (Character.isLetter(board[row][col])) {
+                    sketch.image(images.get(board[row][col]), col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
         }
     }
 
     /**
-     * The calcLegalMoves method calculates for an individual piece, which legal moves it has.
+     * Selects a piece and calculates all legal moves or deselects a piece.
      *
      * @param row the row, where the piece is
      * @param col the column, where the piece is
      */
-    public void calcLegalMoves(int row, int col) {
+    public void selectPiece(int row, int col) {
         char piece = board[row][col];
-        if (Character.isLetter(piece) && row * 8 + col != pieceClicked) {
-            pieceClicked = row * 8 + col;
+        if (Character.isLetter(piece) && (row != selectedRow || col != selectedCol)) {
+            selectedRow = row;
+            selectedCol = col;
+            legalMoves = LegalMoveGenerator.generateLegalMoves(board, selectedRow, selectedCol, whiteToMove);
+            for (int[] arr : legalMoves) {
+                System.out.println(toChessCoordinate(arr));
+            }
         } else {
-            resetPieceClicked();
+            resetSelection();
         }
     }
 
-    public void resetPieceClicked() {
-        this.pieceClicked = -1;
+    /**
+     * Checks if the selected move is a legal move.
+     *
+     * @param row the row of the selected move
+     * @param col the col of the selected move
+     * @return true if legal, else false
+     */
+    public boolean isLegalMove(int row, int col) {
+        if (selectedRow == -1 || selectedCol == -1) return false;
+
+        for (int[] move : legalMoves) {
+            if (move[0] == row && move[1] == col) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Moves a piece.
+     *
+     * @param row the row to which the piece is moved
+     * @param col the col to which the piece is moved
+     */
+    public void movePiece(int row, int col) {
+        board[row][col] = board[selectedRow][selectedCol];
+        board[selectedRow][selectedCol] = '\0';
+
+        // Auto-promote to queen
+        if ((board[row][col] == 'P' && row == 0) || (board[row][col] == 'p' && row == 7)) {
+            board[row][col] = whiteToMove ? 'Q' : 'q';
+        }
+
+        printBoard();
+
+        resetSelection();
+    }
+
+    /**
+     * Resets the selection.
+     */
+    public void resetSelection() {
+        selectedRow = -1;
+        selectedCol = -1;
+    }
+
+    /**
+     * Changes the player.
+     */
+    public void changePlayer() {
+        whiteToMove = !whiteToMove;
+    }
+
+    /**
+     * Prints the chess board in the console.
+     */
+    private void printBoard() {
+        for (char[] rows : board) {
+            for (char piece : rows) {
+                System.out.print(piece + " ");
+            }
+            System.out.println();
+        }
+    }
+
+    /**
+     * Converts a position from the chess board into chess coordinate notation.
+     *
+     * @param position the position from the chess board
+     * @return the chess coordinate notation
+     */
+    private String toChessCoordinate(int[] position) {
+        int row = 8 - position[0];
+        char column = (char) ('a' + position[1]);
+
+        return "" + column + row;
     }
 }

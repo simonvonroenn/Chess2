@@ -11,7 +11,8 @@ public class Chess2 extends PApplet {
     private Chessboard board = new Chessboard(this);
 
     /**
-     * The settings method runs once at the beginning of execution.
+     * Initializes the board.
+     * Runs once at startup.
      */
     public void settings(){
         size(BOARD_SIZE, BOARD_SIZE);
@@ -20,22 +21,37 @@ public class Chess2 extends PApplet {
     }
 
     /**
-     * The draw method runs continously.
+     * Draws the board continously.
+     * Updates the visual.
      */
     public void draw(){
         board.load();
     }
 
+    /**
+     * On mouse click event selects a piece, removes piece selection or moves a piece if it is a legal move.
+     */
     public void mouseClicked() {
+        int row = mouseY / Chessboard.TILE_SIZE;
+        int col = mouseX / Chessboard.TILE_SIZE;
+
         if (mouseX < BOARD_SIZE && mouseY < BOARD_SIZE && mouseButton == LEFT) {
-            board.calcLegalMoves(mouseY / Chessboard.TILE_SIZE, mouseX / Chessboard.TILE_SIZE);
+
+            if (board.isLegalMove(row, col)) {
+                board.movePiece(row, col);
+                board.changePlayer();
+            } else {
+                board.selectPiece(row, col);
+            }
         } else {
-            board.resetPieceClicked();
+            board.resetSelection();
         }
     }
 
+
     /**
-     * The main method integrates Processing in Java.
+     * Main method.
+     * Integrates Processing in Java.
      */
     public static void main(String[] args){
         String[] processingArgs = {"MySketch"};

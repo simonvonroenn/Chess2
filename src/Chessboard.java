@@ -2,6 +2,7 @@ import processing.core.PApplet;
 import processing.core.PImage;
 
 import javax.swing.JOptionPane;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,9 @@ public class Chessboard {
     private int selectedRow, selectedCol = -1;
     private boolean whiteToMove = true;
     private List<int[]> legalMoves;
+
+    private int halfMoveClock = 0; // Counts half moves since last pawn move or capture
+    private Map<String, Integer> positionCount = new java.util.HashMap<>();
 
     /**
      * Integrates Processing in Java.
@@ -163,7 +167,7 @@ public class Chessboard {
             board[selectedRow][selectedCol] = '\0';
         }
 
-        // Promoting
+        // Promotion with dialog
         if ((movingPiece == 'P' && row == 0) || (movingPiece == 'p' && row == 7)) {
             String[] options = {"Queen", "Rook", "Bishop", "Knight"};
             int choice = JOptionPane.showOptionDialog(null,
@@ -181,21 +185,134 @@ public class Chessboard {
             board[row][col] = whiteToMove ? promotedPiece : Character.toLowerCase(promotedPiece);
         }
 
-        // Update castling rights and en passant target
-        LegalMoveGenerator.updateRightsAndEnPassant(board, selectedRow, selectedCol, row, col, capturedPiece);
+        postMoveCalculations(row, col, movingPiece, capturedPiece);
 
         printBoard();
 
-        // Check for checkmate or stalemate
-        if (LegalMoveGenerator.isCheckmate(board, !whiteToMove)) {
+        resetSelection();
+    }
+
+    /**
+     *  Performs all post-move calculations
+     * @param row the row to which the piece is moved
+     * @param col the col to which the piece is moved
+     * @param movedPiece the char of the movedPiece
+     * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
+     */
+    private void postMoveCalculations(int row, int col, char movedPiece, char capturedPiece) {
+        // Update castling rights and en passant target
+        LegalMoveGenerator.updateRightsAndEnPassant(board, selectedRow, selectedCol, row, col, capturedPiece);
+
+        // Update half-move clock: reset if a pawn move or capture occurred, otherwise increment.
+        if (Character.toLowerCase(movedPiece) == 'p' || capturedPiece != '\0') {
+            halfMoveClock = 0;
+        } else {
+            halfMoveClock++;
+        }
+
+        // Update position repetition count
+        String state = getBoardStateSignature();
+        positionCount.put(state, positionCount.getOrDefault(state, 0) + 1);
+
+        // Check for draw conditions
+        if (halfMoveClock >= 100) {
+            Chess2.isGameOver = true;
+            System.out.println("Draw by 50-move rule!");
+        } else if (positionCount.get(state) >= 3) {
+            Chess2.isGameOver = true;
+            System.out.println("Draw by threefold repetition!");
+        } else if (insufficientMaterial()) {
+            Chess2.isGameOver = true;
+            System.out.println("Draw by insufficient material!");
+        }
+        // Check for checkmate or stalemate if none of the above conditions apply
+        else if (LegalMoveGenerator.isCheckmate(board, !whiteToMove)) {
             Chess2.isGameOver = true;
             System.out.println((whiteToMove ? "Black" : "White") + " wins by checkmate!");
         } else if (LegalMoveGenerator.isStalemate(board, !whiteToMove)) {
             Chess2.isGameOver = true;
             System.out.println("Draw by stalemate!");
         }
+    }
 
-        resetSelection();
+    /**
+     * Generates a signature string representing the current board state,
+     * including piece positions, turn, castling rights, and en passant target.
+     */
+    private String getBoardStateSignature() {
+        StringBuilder sb = new StringBuilder();
+        // Append board configuration
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                sb.append(board[i][j] == '\0' ? '.' : board[i][j]);
+            }
+        }
+        // Append current turn
+        sb.append(whiteToMove ? "w" : "b");
+        // Append castling rights from LegalMoveGenerator
+        if (LegalMoveGenerator.whiteKingSideCastling) sb.append("K");
+        if (LegalMoveGenerator.whiteQueenSideCastling) sb.append("Q");
+        if (LegalMoveGenerator.blackKingSideCastling) sb.append("k");
+        if (LegalMoveGenerator.blackQueenSideCastling) sb.append("q");
+        // Append en passant target if any
+        if (LegalMoveGenerator.enPassantTarget != null) {
+            sb.append("ep").append(LegalMoveGenerator.enPassantTarget[0]).append(LegalMoveGenerator.enPassantTarget[1]);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Checks for insufficient material on the board.
+     *
+     * @return true if neither side has sufficient material to force checkmate.
+     */
+    private boolean insufficientMaterial() {
+        int whiteKnights = 0, whiteBishops = 0;
+        int blackKnights = 0, blackBishops = 0;
+
+        boolean hasWhiteLightBishop = false, hasWhiteDarkBishop = false;
+        boolean hasBlackLightBishop = false, hasBlackDarkBishop = false;
+
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                char piece = board[row][col];
+                switch (piece) {
+                    case 'P', 'R', 'Q', 'p', 'r', 'q' -> {
+                        return false;
+                    }
+                    case 'N' -> whiteKnights++;
+                    case 'B' -> {
+                        whiteBishops++;
+                        if ((row + col) % 2 == 0) hasWhiteLightBishop = true;
+                        else hasWhiteDarkBishop = true;
+                    }
+                    case 'n' -> blackKnights++;
+                    case 'b' -> {
+                        blackBishops++;
+                        if ((row + col) % 2 == 0) hasBlackLightBishop = true;
+                        else hasBlackDarkBishop = true;
+                    }
+                }
+            }
+        }
+
+        // King vs. king
+        if (whiteKnights + whiteBishops == 0 && blackKnights + blackBishops == 0) return true;
+
+        // King with single minor piece vs. king
+        if ((whiteKnights + whiteBishops == 1 && blackKnights + blackBishops == 0) ||
+                (whiteKnights + whiteBishops == 0 && blackKnights + blackBishops == 1)) return true;
+
+        // King and bishop vs. king and bishop with both bishops on same color
+        if (whiteKnights == 0 && blackKnights == 0 && whiteBishops == 1 && blackBishops == 1) {
+            if ((hasWhiteLightBishop && hasBlackLightBishop) || (hasWhiteDarkBishop && hasBlackDarkBishop)) {
+                return true;
+            }
+        }
+
+        // King and two knights vs. king
+        return (whiteKnights == 2 && whiteBishops == 0 && blackKnights + blackBishops == 0) ||
+                (blackKnights == 2 && blackBishops == 0 && whiteKnights + whiteBishops == 0);
     }
 
     /**

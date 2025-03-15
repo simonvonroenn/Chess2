@@ -8,14 +8,24 @@ public class Chess2 extends PApplet {
     /** The size of the chess board in pixel. */
     public static final int BOARD_SIZE = 800;
 
+    public static boolean isGameOver = false;
+
     private Chessboard board = new Chessboard(this);
 
     /**
      * Initializes the board.
      * Runs once at startup.
      */
-    public void settings(){
+    public void settings() {
         size(BOARD_SIZE, BOARD_SIZE);
+    }
+
+    /**
+     * Configures frameRate and loads inital position and piece images.
+     * Runs once at startup.
+     */
+    public void setup() {
+        frameRate(60);
         board.loadPosition();
         board.loadImages();
     }
@@ -31,20 +41,21 @@ public class Chess2 extends PApplet {
     /**
      * On mouse click event selects a piece, removes piece selection or moves a piece if it is a legal move.
      */
-    public void mouseClicked() {
+    public void mousePressed() {
         int row = mouseY / Chessboard.TILE_SIZE;
         int col = mouseX / Chessboard.TILE_SIZE;
 
-        if (mouseX < BOARD_SIZE && mouseY < BOARD_SIZE && mouseButton == LEFT) {
-
-            if (board.isLegalMove(row, col)) {
-                board.movePiece(row, col);
-                board.changePlayer();
+        if (!isGameOver) {
+            if (mouseX < BOARD_SIZE && mouseY < BOARD_SIZE && mouseButton == LEFT) {
+                if (board.isLegalMove(row, col)) {
+                    board.movePiece(row, col);
+                    board.changePlayer();
+                } else {
+                    board.selectPiece(row, col);
+                }
             } else {
-                board.selectPiece(row, col);
+                board.resetSelection();
             }
-        } else {
-            board.resetSelection();
         }
     }
 

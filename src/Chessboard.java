@@ -1,7 +1,7 @@
 import processing.core.PApplet;
 import processing.core.PImage;
 
-import java.util.Arrays;
+import javax.swing.JOptionPane;
 import java.util.List;
 import java.util.Map;
 
@@ -74,7 +74,7 @@ public class Chessboard {
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 lum = isLegalMove(row, col) ? 50 : 0;
-                if (row == selectedRow && col == selectedCol) {
+                if (row == selectedRow && col == selectedCol && (Character.isUpperCase(board[selectedRow][selectedCol]) == whiteToMove)) {
                     sketch.fill(129, 183, 131); // clicked piece
                 } else if (((col%2)+row+1)%2 == 0) {
                     sketch.fill(181 + lum, 136 + lum, 99 + lum); // dark squares
@@ -132,15 +132,68 @@ public class Chessboard {
      * @param col the col to which the piece is moved
      */
     public void movePiece(int row, int col) {
-        board[row][col] = board[selectedRow][selectedCol];
-        board[selectedRow][selectedCol] = '\0';
-
-        // Auto-promote to queen
-        if ((board[row][col] == 'P' && row == 0) || (board[row][col] == 'p' && row == 7)) {
-            board[row][col] = whiteToMove ? 'Q' : 'q';
+        char movingPiece = board[selectedRow][selectedCol];
+        char capturedPiece = '\0';
+        // Check for castling move
+        if (Character.toLowerCase(movingPiece) == 'k' && Math.abs(col - selectedCol) == 2) {
+            board[row][col] = movingPiece;
+            board[selectedRow][selectedCol] = '\0';
+            if (col == 6) { // kingside castling
+                capturedPiece = board[row][7]; // not really captured, but for rights update
+                board[row][5] = (movingPiece == 'K' ? 'R' : 'r');
+                board[row][7] = '\0';
+            } else if (col == 2) { // queenside castling
+                capturedPiece = board[row][0];
+                board[row][3] = (movingPiece == 'K' ? 'R' : 'r');
+                board[row][0] = '\0';
+            }
+        } else if (Character.toLowerCase(movingPiece) == 'p' && selectedCol != col && board[row][col] == '\0') {
+            // En passant capture
+            board[row][col] = movingPiece;
+            board[selectedRow][selectedCol] = '\0';
+            capturedPiece = (movingPiece == 'P' ? board[row + 1][col] : board[row - 1][col]);
+            if (movingPiece == 'P') {
+                board[row + 1][col] = '\0';
+            } else {
+                board[row - 1][col] = '\0';
+            }
+        } else {
+            capturedPiece = board[row][col];
+            board[row][col] = movingPiece;
+            board[selectedRow][selectedCol] = '\0';
         }
 
+        // Promoting
+        if ((movingPiece == 'P' && row == 0) || (movingPiece == 'p' && row == 7)) {
+            String[] options = {"Queen", "Rook", "Bishop", "Knight"};
+            int choice = JOptionPane.showOptionDialog(null,
+                    "Choose a piece for promotion:",
+                    "Piece Promotion",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+            char promotedPiece = 'Q';
+            if (choice == 1) promotedPiece = 'R';
+            else if (choice == 2) promotedPiece = 'B';
+            else if (choice == 3) promotedPiece = 'N';
+            board[row][col] = whiteToMove ? promotedPiece : Character.toLowerCase(promotedPiece);
+        }
+
+        // Update castling rights and en passant target
+        LegalMoveGenerator.updateRightsAndEnPassant(board, selectedRow, selectedCol, row, col, capturedPiece);
+
         printBoard();
+
+        // Check for checkmate or stalemate
+        if (LegalMoveGenerator.isCheckmate(board, !whiteToMove)) {
+            Chess2.isGameOver = true;
+            System.out.println((whiteToMove ? "Black" : "White") + " wins by checkmate!");
+        } else if (LegalMoveGenerator.isStalemate(board, !whiteToMove)) {
+            Chess2.isGameOver = true;
+            System.out.println("Draw by stalemate!");
+        }
 
         resetSelection();
     }
@@ -158,6 +211,7 @@ public class Chessboard {
      */
     public void changePlayer() {
         whiteToMove = !whiteToMove;
+        if (!Chess2.isGameOver) System.out.println(whiteToMove ? "White to move now." : "Black to move now.");
     }
 
     /**

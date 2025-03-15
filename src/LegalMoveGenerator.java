@@ -2,6 +2,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LegalMoveGenerator {
+    // Castling rights management
+    public static boolean whiteKingSideCastling = true;
+    public static boolean whiteQueenSideCastling = true;
+    public static boolean blackKingSideCastling = true;
+    public static boolean blackQueenSideCastling = true;
+
+    // En passant target square: null if none, else [row, col]
+    public static int[] enPassantTarget = null;
+
     /**
      * Generates legal moves for a given piece in a position.
      *
@@ -12,23 +21,30 @@ public class LegalMoveGenerator {
      * @return a list of legal moves
      */
     public static List<int[]> generateLegalMoves(char[][] board, int row, int col, boolean whiteToMove) {
-        List<int[]> moves = new ArrayList<>();
-        char piece = board[row][row];
+        List<int[]> pseudoMoves = new ArrayList<>();
+        char piece = board[row][col];
 
         // Asserts correct player
         if ((whiteToMove && Character.isLowerCase(piece)) || (!whiteToMove && Character.isUpperCase(piece))) {
-            return moves;
+            return pseudoMoves;
         }
 
         switch (Character.toLowerCase(piece)) {
-            case 'p' -> generatePawnMoves(board, row, col, moves, whiteToMove);
-            case 'r' -> generateRookMoves(board, row, col, moves);
-            case 'n' -> generateKnightMoves(board, row, col, moves);
-            case 'b' -> generateBishopMoves(board, row, col, moves);
-            case 'q' -> generateQueenMoves(board, row, col, moves);
-            case 'k' -> generateKingMoves(board, row, col, moves);
+            case 'p' -> generatePawnMoves(board, row, col, pseudoMoves, whiteToMove);
+            case 'r' -> generateRookMoves(board, row, col, pseudoMoves);
+            case 'n' -> generateKnightMoves(board, row, col, pseudoMoves);
+            case 'b' -> generateBishopMoves(board, row, col, pseudoMoves);
+            case 'q' -> generateQueenMoves(board, row, col, pseudoMoves);
+            case 'k' -> generateKingMoves(board, row, col, pseudoMoves);
         }
-        return moves;
+        // Filter out moves that leave the king in check
+        List<int[]> legalMoves = new ArrayList<>();
+        for (int[] move : pseudoMoves) {
+            if (!moveLeavesKingInCheck(board, row, col, move[0], move[1], whiteToMove)) {
+                legalMoves.add(move);
+            }
+        }
+        return legalMoves;
     }
 
     private static void generatePawnMoves(char[][] board, int row, int col, List<int[]> moves, boolean whiteToMove) {
@@ -37,10 +53,10 @@ public class LegalMoveGenerator {
         int newRow = row + direction;
 
         // Move
-        if (isValid(newRow, col) && board[newRow][col] == '\0') {
+        if (isNotOutOfBoard(newRow, col) && isEmpty(board, newRow, col)) {
             moves.add(new int[]{newRow, col});
             // Move two fields on first move
-            if (row == startRow && board[newRow + direction][col] == '\0') {
+            if (row == startRow && isEmpty(board, newRow + direction, col)) {
                 moves.add(new int[]{newRow + direction, col});
             }
         }
@@ -48,13 +64,23 @@ public class LegalMoveGenerator {
         // Capture a piece
         for (int side = -1; side <= 1; side += 2) {
             int newCol = col + side;
-            if (isValid(newRow, newCol) && Character.isLetter(board[newRow][newCol])
-                    && Character.isUpperCase(board[newRow][newCol]) != whiteToMove) {
+            if (isNotOutOfBoard(newRow, newCol) && isNotOwnPiece(board, row, col, newRow, newCol)) {
                 moves.add(new int[]{newRow, newCol});
             }
         }
 
         // En Passant
+        if (enPassantTarget != null) {
+            int epRow = enPassantTarget[0];
+            int epCol = enPassantTarget[1];
+            if (newRow == epRow && Math.abs(col - epCol) == 1) {
+                // Check that there is an enemy pawn in the correct position
+                int capturedPawnRow = whiteToMove ? newRow + 1 : newRow - 1;
+                if (isNotOutOfBoard(capturedPawnRow, epCol) && Character.toLowerCase(board[capturedPawnRow][epCol]) == 'p') {
+                    moves.add(new int[]{newRow, epCol});
+                }
+            }
+        }
     }
 
     private static void generateRookMoves(char[][] board, int row, int col, List<int[]> moves) {
@@ -74,7 +100,7 @@ public class LegalMoveGenerator {
         for (int[] move : knightMoves) {
             int newRow = row + move[0];
             int newCol = col + move[1];
-            if (isValid(newRow, newCol)) {
+            if (isValid(board, row, col, newRow, newCol)) {
                 moves.add(new int[]{newRow, newCol});
             }
         }
@@ -85,8 +111,45 @@ public class LegalMoveGenerator {
         for (int[] move : kingMoves) {
             int newRow = row + move[0];
             int newCol = col + move[1];
-            if (isValid(newRow, newCol)) {
+            if (isValid(board, row, col, newRow, newCol)) {
                 moves.add(new int[]{newRow, newCol});
+            }
+        }
+        // Castling moves
+        // Only add castling moves if king is in its original position and not in check
+        if (board[row][col] == 'K' && row == 7 && col == 4) {
+            // White kingside castling
+            if (whiteKingSideCastling &&
+                    isEmpty(board, 7, 5) && isEmpty(board, 7, 6) &&
+                    !isSquareAttacked(board, 7, 4, false) &&
+                    !isSquareAttacked(board, 7, 5, false) &&
+                    !isSquareAttacked(board, 7, 6, false)) {
+                moves.add(new int[]{7, 6});
+            }
+            // White queenside castling
+            if (whiteQueenSideCastling &&
+                    isEmpty(board, 7, 1) && isEmpty(board, 7, 2) && isEmpty(board, 7, 3) &&
+                    !isSquareAttacked(board, 7, 4, false) &&
+                    !isSquareAttacked(board, 7, 3, false) &&
+                    !isSquareAttacked(board, 7, 2, false)) {
+                moves.add(new int[]{7, 2});
+            }
+        } else if (board[row][col] == 'k' && row == 0 && col == 4) {
+            // Black kingside castling
+            if (blackKingSideCastling &&
+                    isEmpty(board, 0, 5) && isEmpty(board, 0, 6) &&
+                    !isSquareAttacked(board, 0, 4, true) &&
+                    !isSquareAttacked(board, 0, 5, true) &&
+                    !isSquareAttacked(board, 0, 6, true)) {
+                moves.add(new int[]{0, 6});
+            }
+            // Black queenside castling
+            if (blackQueenSideCastling &&
+                    isEmpty(board, 0, 1) && isEmpty(board, 0, 2) && isEmpty(board, 0, 3) &&
+                    !isSquareAttacked(board, 0, 4, true) &&
+                    !isSquareAttacked(board, 0, 3, true) &&
+                    !isSquareAttacked(board, 0, 2, true)) {
+                moves.add(new int[]{0, 2});
             }
         }
     }
@@ -95,18 +158,293 @@ public class LegalMoveGenerator {
         for (int[] dir : directions) {
             int newRow = row + dir[0];
             int newCol = col + dir[1];
-            while (isValid(newRow, newCol) && board[newRow][newCol] == '\0') {
+            while (isNotOutOfBoard(newRow, newCol) && isEmpty(board, newRow, newCol)) {
                 moves.add(new int[]{newRow, newCol});
                 newRow += dir[0];
                 newCol += dir[1];
             }
-            if (isValid(newRow, newCol) && Character.isLetter(board[newRow][newCol]) && Character.isUpperCase(board[row][col]) != Character.isUpperCase(board[newRow][newCol])) {
+            if (isValid(board, row, col, newRow, newCol)) {
                 moves.add(new int[]{newRow, newCol});
             }
         }
     }
 
-    private static boolean isValid(int row, int col) {
-        return row >= 0 && row < 8 && col >= 0 && col < 8;
+    private static boolean isValid(char[][] board, int row, int col, int newRow, int newCol) {
+        return isNotOutOfBoard(newRow, newCol) && (isEmpty(board, newRow, newCol) || isNotOwnPiece(board, row, col, newRow, newCol));
+    }
+
+    private static boolean isNotOutOfBoard(int newRow, int newCol) {
+        return newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8;
+    }
+
+    private static boolean isEmpty(char[][] board, int newRow, int newCol) {
+        return board[newRow][newCol] == '\0';
+    }
+
+    public static boolean isNotOwnPiece(char[][] board, int row, int col, int newRow, int newCol) {
+        return Character.isLetter(board[newRow][newCol]) && Character.isUpperCase(board[row][col]) != Character.isUpperCase(board[newRow][newCol]);
+    }
+
+    /**
+     * Update castling rights and en passant target based on the move performed.
+     *
+     * @param board the current chess position
+     * @param fromRow move from row
+     * @param fromCol move from col
+     * @param toRow move to row
+     * @param toCol move to col
+     * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
+     */
+    public static void updateRightsAndEnPassant(char[][] board, int fromRow, int fromCol, int toRow, int toCol, char capturedPiece) {
+        char movingPiece = board[toRow][toCol];
+        // For kings: remove castling rights if moved
+        if (movingPiece == 'K') {
+            whiteKingSideCastling = false;
+            whiteQueenSideCastling = false;
+        } else if (movingPiece == 'k') {
+            blackKingSideCastling = false;
+            blackQueenSideCastling = false;
+        }
+        // For rooks: if rook moved, remove corresponding rights
+        if (movingPiece == 'R') {
+            if (fromRow == 7 && fromCol == 0) {
+                whiteQueenSideCastling = false;
+            }
+            if (fromRow == 7 && fromCol == 7) {
+                whiteKingSideCastling = false;
+            }
+        } else if (movingPiece == 'r') {
+            if (fromRow == 0 && fromCol == 0) {
+                blackQueenSideCastling = false;
+            }
+            if (fromRow == 0 && fromCol == 7) {
+                blackKingSideCastling = false;
+            }
+        }
+        // If a rook is captured from its original square, update castling rights
+        if (capturedPiece == 'R') {
+            if (toRow == 7 && toCol == 0) {
+                whiteQueenSideCastling = false;
+            }
+            if (toRow == 7 && toCol == 7) {
+                whiteKingSideCastling = false;
+            }
+        } else if (capturedPiece == 'r') {
+            if (toRow == 0 && toCol == 0) {
+                blackQueenSideCastling = false;
+            }
+            if (toRow == 0 && toCol == 7) {
+                blackKingSideCastling = false;
+            }
+        }
+        // En passant: if pawn moved two squares forward, set en passant target, else clear.
+        if (Character.toLowerCase(movingPiece) == 'p' && Math.abs(toRow - fromRow) == 2) {
+            int epRow = (fromRow + toRow) / 2;
+            enPassantTarget = new int[]{epRow, fromCol};
+        } else {
+            enPassantTarget = null;
+        }
+    }
+
+    /**
+     * Checks if a move leaves the king in check by simulating the move.
+     *
+     * @param board the current chess position
+     * @param fromRow original king position (row)
+     * @param fromCol original king position (col)
+     * @param toRow new king position (row)
+     * @param toCol new king position (col)
+     * @param whiteToMove indicates whose move it is
+     * @return true, if the move leaves the king in check, otherwise false
+     */
+    private static boolean moveLeavesKingInCheck(char[][] board, int fromRow, int fromCol, int toRow, int toCol, boolean whiteToMove) {
+        char[][] boardCopy = copyBoard(board);
+        char movingPiece = boardCopy[fromRow][fromCol];
+        // Simulate castling move
+        if (Character.toLowerCase(movingPiece) == 'k' && Math.abs(toCol - fromCol) == 2) {
+            boardCopy[toRow][toCol] = movingPiece;
+            boardCopy[fromRow][fromCol] = '\0';
+            if (toCol > fromCol) { // kingside
+                boardCopy[toRow][toCol - 1] = boardCopy[toRow][7];
+                boardCopy[toRow][7] = '\0';
+            } else { // queenside
+                boardCopy[toRow][toCol + 1] = boardCopy[toRow][0];
+                boardCopy[toRow][0] = '\0';
+            }
+        } else if (Character.toLowerCase(movingPiece) == 'p' && fromCol != toCol && boardCopy[toRow][toCol] == '\0') {
+            // Simulate en passant capture
+            boardCopy[toRow][toCol] = movingPiece;
+            boardCopy[fromRow][fromCol] = '\0';
+            int capturedPawnRow = whiteToMove ? toRow + 1 : toRow - 1;
+            boardCopy[capturedPawnRow][toCol] = '\0';
+        } else {
+            boardCopy[toRow][toCol] = movingPiece;
+            boardCopy[fromRow][fromCol] = '\0';
+        }
+        return isKingInCheck(boardCopy, whiteToMove);
+    }
+
+    /**
+     * Creates a deep copy of the board.
+     *
+     * @param board the current chess position
+     * @return the deep copy of the board
+     */
+    private static char[][] copyBoard(char[][] board) {
+        char[][] copy = new char[8][8];
+        for (int i = 0; i < 8; i++) {
+            System.arraycopy(board[i], 0, copy[i], 0, 8);
+        }
+        return copy;
+    }
+
+    /**
+     * Checks if the king is in check.
+     *
+     * @param board the current chess position
+     * @param whiteKing true, if it is the white king to be checked, false if it is the black king
+     * @return true if the king is in check, otherwise false
+     */
+    public static boolean isKingInCheck(char[][] board, boolean whiteKing) {
+        int kingRow = -1, kingCol = -1;
+        char kingChar = whiteKing ? 'K' : 'k';
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (board[i][j] == kingChar) {
+                    kingRow = i;
+                    kingCol = j;
+                    break;
+                }
+            }
+            if (kingRow != -1) break;
+        }
+        if (kingRow == -1) return false;
+        return isSquareAttacked(board, kingRow, kingCol, !whiteKing);
+    }
+
+    /**
+     * Checks if a square is attacked by any piece of the specified color
+     *
+     * @param board the current chess position
+     * @param targetRow the target row
+     * @param targetCol the target col
+     * @param byWhite the color
+     * @return true, if the square is attacked, otherwise false
+     */
+    private static boolean isSquareAttacked(char[][] board, int targetRow, int targetCol, boolean byWhite) {
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                char piece = board[r][c];
+                if (piece == '\0') continue;
+                if (Character.isUpperCase(piece) != byWhite) continue;
+                switch (Character.toLowerCase(piece)) {
+                    case 'p' -> {
+                        int direction = byWhite ? -1 : 1;
+                        if (targetRow == r + direction && (targetCol == c - 1 || targetCol == c + 1)) {
+                            return true;
+                        }
+                    }
+                    case 'n' -> {
+                        int[][] knightMoves = {{-2, -1}, {-2, 1}, {2, -1}, {2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}};
+                        for (int[] move : knightMoves) {
+                            if (r + move[0] == targetRow && c + move[1] == targetCol) return true;
+                        }
+                    }
+                    case 'b' -> {
+                        int[][] directionsDiag = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+                        for (int[] d : directionsDiag) {
+                            int rr = r + d[0], cc = c + d[1];
+                            while (isNotOutOfBoard(rr, cc)) {
+                                if (rr == targetRow && cc == targetCol) return true;
+                                if (board[rr][cc] != '\0') break;
+                                rr += d[0]; cc += d[1];
+                            }
+                        }
+                    }
+                    case 'r' -> {
+                        int[][] directionsStraight = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+                        for (int[] d : directionsStraight) {
+                            int rr = r + d[0], cc = c + d[1];
+                            while (isNotOutOfBoard(rr, cc)) {
+                                if (rr == targetRow && cc == targetCol) return true;
+                                if (board[rr][cc] != '\0') break;
+                                rr += d[0]; cc += d[1];
+                            }
+                        }
+                    }
+                    case 'q' -> {
+                        int[][] directionsStraight = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+                        int[][] directionsDiag = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+                        for (int[] d : directionsStraight) {
+                            int rr = r + d[0], cc = c + d[1];
+                            while (isNotOutOfBoard(rr, cc)) {
+                                if (rr == targetRow && cc == targetCol) return true;
+                                if (board[rr][cc] != '\0') break;
+                                rr += d[0]; cc += d[1];
+                            }
+                        }
+                        for (int[] d : directionsDiag) {
+                            int rr = r + d[0], cc = c + d[1];
+                            while (isNotOutOfBoard(rr, cc)) {
+                                if (rr == targetRow && cc == targetCol) return true;
+                                if (board[rr][cc] != '\0') break;
+                                rr += d[0]; cc += d[1];
+                            }
+                        }
+                    }
+                    case 'k' -> {
+                        int[][] kingMoves = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+                        for (int[] move : kingMoves) {
+                            if (r + move[0] == targetRow && c + move[1] == targetCol) return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if the current position is a checkmate.
+     *
+     * @param board the current chess position
+     * @param whiteToMove indicates if white is to move
+     * @return true if the position is a checkmate, otherwise false
+     */
+    public static boolean isCheckmate(char[][] board, boolean whiteToMove) {
+        // Checkmate occurs if no legal moves exist and the king is in check
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                char piece = board[row][col];
+                if (piece == '\0') continue;
+                if ((whiteToMove && Character.isUpperCase(piece)) || (!whiteToMove && Character.isLowerCase(piece))) {
+                    List<int[]> moves = generateLegalMoves(board, row, col, whiteToMove);
+                    if (!moves.isEmpty()) return false; // The player has at least one legal move
+                }
+            }
+        }
+        return isKingInCheck(board, whiteToMove); // Checkmate only if the king IS in check
+    }
+
+    /**
+     * Checks if the current player is in stalemate.
+     *
+     * @param board the current chess position
+     * @param whiteToMove indicates if white is to move
+     * @return true if the position is a stalemate, otherwise false
+     */
+    public static boolean isStalemate(char[][] board, boolean whiteToMove) {
+        // Stalemate occurs if the current player has no legal moves and is not in check
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                char piece = board[row][col];
+                if (piece == '\0') continue;
+                if ((whiteToMove && Character.isUpperCase(piece)) || (!whiteToMove && Character.isLowerCase(piece))) {
+                    List<int[]> legalMoves = generateLegalMoves(board, row, col, whiteToMove);
+                    if (!legalMoves.isEmpty()) return false; // The player has at least one legal move
+                }
+            }
+        }
+        return !isKingInCheck(board, whiteToMove); // Stalemate only if the king IS NOT in check
     }
 }

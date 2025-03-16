@@ -31,6 +31,13 @@ public class Chess2 extends PApplet {
         frameRate(60);
         board.loadPosition();
         board.loadImages();
+        // Make first move if the bot plays white
+        if (!playWhite) {
+            new Thread(() -> {
+                board.movePieceForBot(bot);
+                board.changePlayer();
+            }).start();
+        }
     }
 
     /**

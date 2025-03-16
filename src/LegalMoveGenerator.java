@@ -290,7 +290,7 @@ public class LegalMoveGenerator {
      * @param board the current chess position
      * @return the deep copy of the board
      */
-    private static char[][] copyBoard(char[][] board) {
+    public static char[][] copyBoard(char[][] board) {
         char[][] copy = new char[8][8];
         for (int i = 0; i < 8; i++) {
             System.arraycopy(board[i], 0, copy[i], 0, 8);

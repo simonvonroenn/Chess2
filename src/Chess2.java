@@ -5,12 +5,15 @@ public class Chess2 extends PApplet {
     /** The starting position. */
     public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-    /** The size of the chess board in pixel. */
+    /** Set to true if the user wants to play white; Set to false if the user wants to play black */
+    public static final boolean playWhite = true;
+
+
+
     public static final int BOARD_SIZE = 800;
-
     public static boolean isGameOver = false;
-
-    private Chessboard board = new Chessboard(this);
+    private final Chessboard board = new Chessboard(this);
+    private final ChessBot bot = new ChessBot();
 
     /**
      * Initializes the board.
@@ -49,7 +52,12 @@ public class Chess2 extends PApplet {
             if (mouseX < BOARD_SIZE && mouseY < BOARD_SIZE && mouseButton == LEFT) {
                 if (board.isLegalMove(row, col)) {
                     board.movePiece(row, col);
-                    board.changePlayer();
+                    if (board.changePlayer() != playWhite && !isGameOver) {
+                        new Thread(() -> {
+                            board.movePieceForBot(bot);
+                            board.changePlayer();
+                        }).start();
+                    }
                 } else {
                     board.selectPiece(row, col);
                 }
@@ -58,7 +66,6 @@ public class Chess2 extends PApplet {
             }
         }
     }
-
 
     /**
      * Main method.

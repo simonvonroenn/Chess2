@@ -192,6 +192,18 @@ public class Chessboard {
         resetSelection();
     }
 
+    public void movePieceForBot(ChessBot bot) {
+        Move move = bot.calculateBestMove(board, whiteToMove);
+        char movingPiece = board[move.fromRow][move.fromCol];
+        char capturedPiece = board[move.toRow][move.toCol];
+        board[move.toRow][move.toCol] = board[move.fromRow][move.fromCol];
+        board[move.fromRow][move.fromCol] = '\0';
+
+        postMoveCalculations(move.toRow, move.toCol, movingPiece, capturedPiece);
+
+        printBoard();
+    }
+
     /**
      *  Performs all post-move calculations
      * @param row the row to which the piece is moved
@@ -325,10 +337,13 @@ public class Chessboard {
 
     /**
      * Changes the player.
+     *
+     * @return true if now white is to move
      */
-    public void changePlayer() {
+    public boolean changePlayer() {
         whiteToMove = !whiteToMove;
         if (!Chess2.isGameOver) System.out.println(whiteToMove ? "White to move now." : "Black to move now.");
+        return whiteToMove;
     }
 
     /**

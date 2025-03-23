@@ -14,8 +14,6 @@ import java.util.List;
 public class ChessBot {
     // Time limit in milliseconds
     public static final long TIME_LIMIT = 2000;
-    // Max depth for DFS
-    public static final int MAX_DEPTH = 10;
 
     // Piece values in pawn equivalents
     public static final double PAWN_VALUE = 1.0;

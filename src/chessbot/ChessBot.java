@@ -31,14 +31,14 @@ public class ChessBot {
      * @param whiteToMove true if white is to move, false otherwise
      * @return the best move found, or null if no move is available
      */
-    public Move calculateBestMove(char[][] board, boolean whiteToMove) {
+    public BestMove calculateBestMove(char[][] board, boolean whiteToMove) {
         return DepthFirstSearchStrategy.iterativeDeepeningSearch(board, whiteToMove);
     }
 
     // Helper class to store the best move and its evaluation value.
     public static class BestMove {
-        Move move;
-        double evaluation;
+        public Move move;
+        public double evaluation;
 
         BestMove(Move move, double evaluation) {
             this.move = move;

@@ -26,7 +26,9 @@ public class Chessboard {
     private List<int[]> legalMoves;
 
     private int halfMoveClock = 0; // Counts half moves since last pawn move or capture
-    private Map<String, Integer> positionCount = new java.util.HashMap<>();
+    private final Map<String, Integer> positionCount = new java.util.HashMap<>();
+
+    public static double evaluation;
 
     /**
      * Integrates Processing in Java.
@@ -210,7 +212,9 @@ public class Chessboard {
      * @return true if the game is over (win, draw, lose), else false
      */
     public boolean movePieceForBot(ChessBot bot) {
-        Move move = bot.calculateBestMove(board, whiteToMove);
+        ChessBot.BestMove bestMove = bot.calculateBestMove(board, whiteToMove);
+        evaluation = bestMove.evaluation;
+        Move move = bestMove.move;
         char movingPiece = board[move.fromRow][move.fromCol];
         char capturedPiece = board[move.toRow][move.toCol];
         board[move.toRow][move.toCol] = board[move.fromRow][move.fromCol];

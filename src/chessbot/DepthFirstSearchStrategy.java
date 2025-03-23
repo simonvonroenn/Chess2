@@ -8,7 +8,7 @@ import java.util.List;
 
 public class DepthFirstSearchStrategy {
     // Max depth for DFS
-    public static final int MAX_DEPTH = 2;
+    public static final int MAX_DEPTH = 4;
 
     /**
      * Performs iterative deepening search up to a maximum depth within the given time limit.
@@ -17,14 +17,11 @@ public class DepthFirstSearchStrategy {
      * @param whiteToMove true if white is to move
      * @return the best move found so far
      */
-    public static Move iterativeDeepeningSearch(char[][] board, boolean whiteToMove) {
-        Move bestMove = null;
+    public static BestMove iterativeDeepeningSearch(char[][] board, boolean whiteToMove) {
+        BestMove bestMove = null;
         long startTime = System.currentTimeMillis();
         for (int depth = 2; depth <= MAX_DEPTH; depth+=2) {
-            BestMove bm = depthLimitedDFS(board, whiteToMove, depth, startTime);
-            if (bm != null && bm.move != null) {
-                bestMove = bm.move;
-            }
+            bestMove = depthLimitedDFS(board, whiteToMove, depth, startTime);
             if (System.currentTimeMillis() - startTime >= ChessBot.TIME_LIMIT) {
                 System.out.println("Reached depth: " + depth);
                 break;

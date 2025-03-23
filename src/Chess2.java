@@ -23,7 +23,7 @@ public class Chess2 extends PApplet {
      * Runs once at startup.
      */
     public void settings() {
-        size(BOARD_SIZE, BOARD_SIZE);
+        size(BOARD_SIZE + 300, BOARD_SIZE);
     }
 
     /**
@@ -48,7 +48,12 @@ public class Chess2 extends PApplet {
      * Updates the visual.
      */
     public void draw(){
+        background(200);
         board.load();
+        fill(0);
+        textSize(24);
+        text("Evaluation: " + Chessboard.evaluation, BOARD_SIZE + 50, 50);
+
     }
 
     /**

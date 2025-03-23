@@ -1,3 +1,5 @@
+package chessboard;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,10 +54,10 @@ public class LegalMoveGenerator {
         int startRow = whiteToMove ? 6 : 1;
         int newRow = row + direction;
 
-        // Move
+        // Chessboard.Move
         if (isNotOutOfBoard(newRow, col) && isEmpty(board, newRow, col)) {
             moves.add(new int[]{newRow, col});
-            // Move two fields on first move
+            // Chessboard.Move two fields on first move
             if (row == startRow && isEmpty(board, newRow + direction, col)) {
                 moves.add(new int[]{newRow + direction, col});
             }

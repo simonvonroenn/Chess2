@@ -1,8 +1,10 @@
+package chessboard;
+
+import chessbot.ChessBot;
 import processing.core.PApplet;
 import processing.core.PImage;
 
 import javax.swing.JOptionPane;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -11,7 +13,10 @@ public class Chessboard {
     private final PApplet sketch;
 
     /** The size of each tile in pixel. */
-    public static final int TILE_SIZE = Chess2.BOARD_SIZE / 8;
+    public final int TILE_SIZE;
+
+    /** The starting position. */
+    public final String FEN;
 
     private final char[][] board = new char[8][8];
 
@@ -26,15 +31,17 @@ public class Chessboard {
     /**
      * Integrates Processing in Java.
      */
-    public Chessboard(PApplet sketch) {
+    public Chessboard(PApplet sketch, int TILE_SIZE, String FEN) {
         this.sketch = sketch;
+        this.TILE_SIZE = TILE_SIZE;
+        this.FEN = FEN;
     }
 
     /**
      *Loads the starting position at the beginning.
      */
     public void loadPosition() {
-        String[] rows = Chess2.FEN.split(" ")[0].split("/");
+        String[] rows = FEN.split(" ")[0].split("/");
         for (int i = 0; i < 8; i++) {
             int offset = 0;
             for (int j = 0; j < rows[i].length(); j++) {
@@ -134,8 +141,10 @@ public class Chessboard {
      *
      * @param row the row to which the piece is moved
      * @param col the col to which the piece is moved
+     *
+     * @return true if the game is over (win, draw, lose), else false
      */
-    public void movePiece(int row, int col) {
+    public boolean movePiece(int row, int col) {
         char movingPiece = board[selectedRow][selectedCol];
         char capturedPiece = '\0';
         // Check for castling move
@@ -185,23 +194,33 @@ public class Chessboard {
             board[row][col] = whiteToMove ? promotedPiece : Character.toLowerCase(promotedPiece);
         }
 
-        postMoveCalculations(row, col, movingPiece, capturedPiece);
+        boolean isGameOver = postMoveCalculations(row, col, movingPiece, capturedPiece);
 
         printBoard();
 
         resetSelection();
+
+        return isGameOver;
     }
 
-    public void movePieceForBot(ChessBot bot) {
+    /**
+     * Move a piece for the bot.
+     *
+     * @param bot the bot
+     * @return true if the game is over (win, draw, lose), else false
+     */
+    public boolean movePieceForBot(ChessBot bot) {
         Move move = bot.calculateBestMove(board, whiteToMove);
         char movingPiece = board[move.fromRow][move.fromCol];
         char capturedPiece = board[move.toRow][move.toCol];
         board[move.toRow][move.toCol] = board[move.fromRow][move.fromCol];
         board[move.fromRow][move.fromCol] = '\0';
 
-        postMoveCalculations(move.toRow, move.toCol, movingPiece, capturedPiece);
+        boolean isGameOver = postMoveCalculations(move.toRow, move.toCol, movingPiece, capturedPiece);
 
         printBoard();
+
+        return isGameOver;
     }
 
     /**
@@ -210,8 +229,9 @@ public class Chessboard {
      * @param col the col to which the piece is moved
      * @param movedPiece the char of the movedPiece
      * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
+     * @return true if game is over (win, draw, lose), else false
      */
-    private void postMoveCalculations(int row, int col, char movedPiece, char capturedPiece) {
+    private boolean postMoveCalculations(int row, int col, char movedPiece, char capturedPiece) {
         // Update castling rights and en passant target
         LegalMoveGenerator.updateRightsAndEnPassant(board, selectedRow, selectedCol, row, col, capturedPiece);
 
@@ -228,23 +248,24 @@ public class Chessboard {
 
         // Check for draw conditions
         if (halfMoveClock >= 100) {
-            Chess2.isGameOver = true;
             System.out.println("Draw by 50-move rule!");
+            return true;
         } else if (positionCount.get(state) >= 3) {
-            Chess2.isGameOver = true;
             System.out.println("Draw by threefold repetition!");
+            return true;
         } else if (insufficientMaterial()) {
-            Chess2.isGameOver = true;
             System.out.println("Draw by insufficient material!");
+            return true;
         }
         // Check for checkmate or stalemate if none of the above conditions apply
         else if (LegalMoveGenerator.isCheckmate(board, !whiteToMove)) {
-            Chess2.isGameOver = true;
             System.out.println((whiteToMove ? "Black" : "White") + " wins by checkmate!");
+            return true;
         } else if (LegalMoveGenerator.isStalemate(board, !whiteToMove)) {
-            Chess2.isGameOver = true;
             System.out.println("Draw by stalemate!");
+            return true;
         }
+        return false;
     }
 
     /**
@@ -261,7 +282,7 @@ public class Chessboard {
         }
         // Append current turn
         sb.append(whiteToMove ? "w" : "b");
-        // Append castling rights from LegalMoveGenerator
+        // Append castling rights from Chessboard.LegalMoveGenerator
         if (LegalMoveGenerator.whiteKingSideCastling) sb.append("K");
         if (LegalMoveGenerator.whiteQueenSideCastling) sb.append("Q");
         if (LegalMoveGenerator.blackKingSideCastling) sb.append("k");
@@ -342,7 +363,7 @@ public class Chessboard {
      */
     public boolean changePlayer() {
         whiteToMove = !whiteToMove;
-        if (!Chess2.isGameOver) System.out.println(whiteToMove ? "White to move now." : "Black to move now.");
+        System.out.println(whiteToMove ? "White to move now." : "Black to move now.");
         return whiteToMove;
     }
 

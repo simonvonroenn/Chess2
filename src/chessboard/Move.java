@@ -1,3 +1,5 @@
+package chessboard;
+
 /**
  * Represents a move on the chess board.
  */

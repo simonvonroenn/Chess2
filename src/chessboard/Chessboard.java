@@ -1,6 +1,6 @@
 package chessboard;
 
-import chessbot.ChessBot;
+import chessbot.Engine;
 import processing.core.PApplet;
 import processing.core.PImage;
 
@@ -23,7 +23,7 @@ public class Chessboard {
     private Map<Character, PImage> images;
     private int selectedRow, selectedCol = -1;
     private boolean whiteToMove = true;
-    private List<int[]> legalMoves;
+    private List<Move> legalMoves;
 
     private int halfMoveClock = 0; // Counts half moves since last pawn move or capture
     private final Map<String, Integer> positionCount = new java.util.HashMap<>();
@@ -114,8 +114,8 @@ public class Chessboard {
             selectedRow = row;
             selectedCol = col;
             legalMoves = LegalMoveGenerator.generateLegalMoves(board, selectedRow, selectedCol, whiteToMove);
-            for (int[] arr : legalMoves) {
-                System.out.println(toChessCoordinate(arr));
+            for (Move move : legalMoves) {
+                System.out.println(move.toString());
             }
         } else {
             resetSelection();
@@ -132,8 +132,8 @@ public class Chessboard {
     public boolean isLegalMove(int row, int col) {
         if (selectedRow == -1 || selectedCol == -1) return false;
 
-        for (int[] move : legalMoves) {
-            if (move[0] == row && move[1] == col) return true;
+        for (Move move : legalMoves) {
+            if (move.toRow == row && move.toCol == col) return true;
         }
         return false;
     }
@@ -211,8 +211,8 @@ public class Chessboard {
      * @param bot the bot
      * @return true if the game is over (win, draw, lose), else false
      */
-    public boolean movePieceForBot(ChessBot bot) {
-        ChessBot.BestMove bestMove = bot.calculateBestMove(board, whiteToMove);
+    public boolean movePieceForBot(Engine bot) {
+        Engine.BestMove bestMove = bot.calculateBestMove(board, whiteToMove);
         evaluation = bestMove.evaluation;
         Move move = bestMove.move;
         char movingPiece = board[move.fromRow][move.fromCol];
@@ -381,18 +381,5 @@ public class Chessboard {
             }
             System.out.println();
         }
-    }
-
-    /**
-     * Converts a position from the chess board into chess coordinate notation.
-     *
-     * @param position the position from the chess board
-     * @return the chess coordinate notation
-     */
-    private String toChessCoordinate(int[] position) {
-        int row = 8 - position[0];
-        char column = (char) ('a' + position[1]);
-
-        return "" + column + row;
     }
 }

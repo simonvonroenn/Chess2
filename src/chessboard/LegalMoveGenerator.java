@@ -1,6 +1,7 @@
 package chessboard;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class LegalMoveGenerator {
@@ -22,13 +23,13 @@ public class LegalMoveGenerator {
      * @param whiteToMove indicates if white or black is to move
      * @return a list of legal moves
      */
-    public static List<int[]> generateLegalMoves(char[][] board, int row, int col, boolean whiteToMove) {
-        List<int[]> pseudoMoves = new ArrayList<>();
+    public static List<Move> generateLegalMoves(char[][] board, int row, int col, boolean whiteToMove) {
+        List<Move> pseudoMoves = new ArrayList<>();
         char piece = board[row][col];
 
         // Asserts correct player
         if ((whiteToMove && Character.isLowerCase(piece)) || (!whiteToMove && Character.isUpperCase(piece))) {
-            return pseudoMoves;
+            return Collections.emptyList();
         }
 
         switch (Character.toLowerCase(piece)) {
@@ -40,26 +41,30 @@ public class LegalMoveGenerator {
             case 'k' -> generateKingMoves(board, row, col, pseudoMoves);
         }
         // Filter out moves that leave the king in check
-        List<int[]> legalMoves = new ArrayList<>();
-        for (int[] move : pseudoMoves) {
-            if (!moveLeavesKingInCheck(board, row, col, move[0], move[1], whiteToMove)) {
+        List<Move> legalMoves = new ArrayList<>();
+        for (Move move : pseudoMoves) {
+            char[][] boardCopy = applyMove(board, move, whiteToMove);
+            if (!isKingInCheck(boardCopy, whiteToMove)) { // Check if move leaves own king in check
+                if (isKingInCheck(boardCopy, !whiteToMove)) { // Check if move checks the opponent's king
+                    move.setCheck();
+                }
                 legalMoves.add(move);
             }
         }
         return legalMoves;
     }
 
-    private static void generatePawnMoves(char[][] board, int row, int col, List<int[]> moves, boolean whiteToMove) {
+    private static void generatePawnMoves(char[][] board, int row, int col, List<Move> moves, boolean whiteToMove) {
         int direction = whiteToMove ? -1 : 1;
         int startRow = whiteToMove ? 6 : 1;
         int newRow = row + direction;
 
-        // Chessboard.Move
+        // Move
         if (isNotOutOfBoard(newRow, col) && isEmpty(board, newRow, col)) {
-            moves.add(new int[]{newRow, col});
-            // Chessboard.Move two fields on first move
+            moves.add(new Move(row, col, newRow, col, false));
+            // Move two fields on first move
             if (row == startRow && isEmpty(board, newRow + direction, col)) {
-                moves.add(new int[]{newRow + direction, col});
+                moves.add(new Move(row, col, newRow + direction, col, false));
             }
         }
 
@@ -67,7 +72,7 @@ public class LegalMoveGenerator {
         for (int side = -1; side <= 1; side += 2) {
             int newCol = col + side;
             if (isNotOutOfBoard(newRow, newCol) && isNotOwnPiece(board, row, col, newRow, newCol)) {
-                moves.add(new int[]{newRow, newCol});
+                moves.add(new Move(row, col, newRow, newCol, true));
             }
         }
 
@@ -79,42 +84,44 @@ public class LegalMoveGenerator {
                 // Check that there is an enemy pawn in the correct position
                 int capturedPawnRow = whiteToMove ? newRow + 1 : newRow - 1;
                 if (isNotOutOfBoard(capturedPawnRow, epCol) && Character.toLowerCase(board[capturedPawnRow][epCol]) == 'p') {
-                    moves.add(new int[]{newRow, epCol});
+                    moves.add(new Move(row, col, newRow, epCol, true));
                 }
             }
         }
     }
 
-    private static void generateRookMoves(char[][] board, int row, int col, List<int[]> moves) {
+    private static void generateRookMoves(char[][] board, int row, int col, List<Move> moves) {
         generateSlidingMoves(board, row, col, moves, new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}});
     }
 
-    private static void generateBishopMoves(char[][] board, int row, int col, List<int[]> moves) {
+    private static void generateBishopMoves(char[][] board, int row, int col, List<Move> moves) {
         generateSlidingMoves(board, row, col, moves, new int[][]{{1, 1}, {-1, -1}, {1, -1}, {-1, 1}});
     }
 
-    private static void generateQueenMoves(char[][] board, int row, int col, List<int[]> moves) {
+    private static void generateQueenMoves(char[][] board, int row, int col, List<Move> moves) {
         generateSlidingMoves(board, row, col, moves, new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, -1}, {1, -1}, {-1, 1}});
     }
 
-    private static void generateKnightMoves(char[][] board, int row, int col, List<int[]> moves) {
+    private static void generateKnightMoves(char[][] board, int row, int col, List<Move> moves) {
         int[][] knightMoves = {{-2, -1}, {-2, 1}, {2, -1}, {2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}};
         for (int[] move : knightMoves) {
             int newRow = row + move[0];
             int newCol = col + move[1];
             if (isValid(board, row, col, newRow, newCol)) {
-                moves.add(new int[]{newRow, newCol});
+                boolean capture = !isEmpty(board, newRow, newCol);
+                moves.add(new Move(row, col, newRow, newCol, capture));
             }
         }
     }
 
-    private static void generateKingMoves(char[][] board, int row, int col, List<int[]> moves) {
+    private static void generateKingMoves(char[][] board, int row, int col, List<Move> moves) {
         int[][] kingMoves = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
         for (int[] move : kingMoves) {
             int newRow = row + move[0];
             int newCol = col + move[1];
             if (isValid(board, row, col, newRow, newCol)) {
-                moves.add(new int[]{newRow, newCol});
+                boolean capture = !isEmpty(board, newRow, newCol);
+                moves.add(new Move(row, col, newRow, newCol, capture));
             }
         }
         // Castling moves
@@ -126,7 +133,7 @@ public class LegalMoveGenerator {
                     !isSquareAttacked(board, 7, 4, false) &&
                     !isSquareAttacked(board, 7, 5, false) &&
                     !isSquareAttacked(board, 7, 6, false)) {
-                moves.add(new int[]{7, 6});
+                moves.add(new Move(row, col, 7, 6, false));
             }
             // White queenside castling
             if (whiteQueenSideCastling &&
@@ -134,7 +141,7 @@ public class LegalMoveGenerator {
                     !isSquareAttacked(board, 7, 4, false) &&
                     !isSquareAttacked(board, 7, 3, false) &&
                     !isSquareAttacked(board, 7, 2, false)) {
-                moves.add(new int[]{7, 2});
+                moves.add(new Move(row, col, 7, 2, false));
             }
         } else if (board[row][col] == 'k' && row == 0 && col == 4) {
             // Black kingside castling
@@ -143,7 +150,7 @@ public class LegalMoveGenerator {
                     !isSquareAttacked(board, 0, 4, true) &&
                     !isSquareAttacked(board, 0, 5, true) &&
                     !isSquareAttacked(board, 0, 6, true)) {
-                moves.add(new int[]{0, 6});
+                moves.add(new Move(row, col, 0, 6, false));
             }
             // Black queenside castling
             if (blackQueenSideCastling &&
@@ -151,22 +158,22 @@ public class LegalMoveGenerator {
                     !isSquareAttacked(board, 0, 4, true) &&
                     !isSquareAttacked(board, 0, 3, true) &&
                     !isSquareAttacked(board, 0, 2, true)) {
-                moves.add(new int[]{0, 2});
+                moves.add(new Move(row, col, 0, 2, false));
             }
         }
     }
 
-    private static void generateSlidingMoves(char[][] board, int row, int col, List<int[]> moves, int[][] directions) {
+    private static void generateSlidingMoves(char[][] board, int row, int col, List<Move> moves, int[][] directions) {
         for (int[] dir : directions) {
             int newRow = row + dir[0];
             int newCol = col + dir[1];
             while (isNotOutOfBoard(newRow, newCol) && isEmpty(board, newRow, newCol)) {
-                moves.add(new int[]{newRow, newCol});
+                moves.add(new Move(row, col, newRow, newCol, false));
                 newRow += dir[0];
                 newCol += dir[1];
             }
             if (isValid(board, row, col, newRow, newCol)) {
-                moves.add(new int[]{newRow, newCol});
+                moves.add(new Move(row, col, newRow, newCol, true));
             }
         }
     }
@@ -249,41 +256,39 @@ public class LegalMoveGenerator {
     }
 
     /**
-     * Checks if a move leaves the king in check by simulating the move.
+     * Applies a move to a copy of the board and returns this copy.
      *
-     * @param board the current chess position
-     * @param fromRow original king position (row)
-     * @param fromCol original king position (col)
-     * @param toRow new king position (row)
-     * @param toCol new king position (col)
-     * @param whiteToMove indicates whose move it is
-     * @return true, if the move leaves the king in check, otherwise false
+     * @param board the current position
+     * @param move the move to apply
+     * @param whiteToMove if white to move
+     * @return the position after move application
      */
-    private static boolean moveLeavesKingInCheck(char[][] board, int fromRow, int fromCol, int toRow, int toCol, boolean whiteToMove) {
+    public static char[][] applyMove(char[][] board, Move move, boolean whiteToMove) {
         char[][] boardCopy = copyBoard(board);
-        char movingPiece = boardCopy[fromRow][fromCol];
-        // Simulate castling move
-        if (Character.toLowerCase(movingPiece) == 'k' && Math.abs(toCol - fromCol) == 2) {
-            boardCopy[toRow][toCol] = movingPiece;
-            boardCopy[fromRow][fromCol] = '\0';
-            if (toCol > fromCol) { // kingside
-                boardCopy[toRow][toCol - 1] = boardCopy[toRow][7];
-                boardCopy[toRow][7] = '\0';
+        char movingPiece = boardCopy[move.fromRow][move.fromCol];
+        if (Character.toLowerCase(movingPiece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
+            // Simulate castling
+            boardCopy[move.toRow][move.toCol] = movingPiece;
+            boardCopy[move.fromRow][move.fromCol] = '\0';
+            if (move.toCol > move.fromCol) { // kingside
+                boardCopy[move.toRow][move.toCol - 1] = boardCopy[move.toRow][7];
+                boardCopy[move.toRow][7] = '\0';
             } else { // queenside
-                boardCopy[toRow][toCol + 1] = boardCopy[toRow][0];
-                boardCopy[toRow][0] = '\0';
+                boardCopy[move.toRow][move.toCol + 1] = boardCopy[move.toRow][0];
+                boardCopy[move.toRow][0] = '\0';
             }
-        } else if (Character.toLowerCase(movingPiece) == 'p' && fromCol != toCol && boardCopy[toRow][toCol] == '\0') {
+        } else if (Character.toLowerCase(movingPiece) == 'p' && move.fromCol != move.toCol && boardCopy[move.toRow][move.toCol] == '\0') {
             // Simulate en passant capture
-            boardCopy[toRow][toCol] = movingPiece;
-            boardCopy[fromRow][fromCol] = '\0';
-            int capturedPawnRow = whiteToMove ? toRow + 1 : toRow - 1;
-            boardCopy[capturedPawnRow][toCol] = '\0';
+            boardCopy[move.toRow][move.toCol] = movingPiece;
+            boardCopy[move.fromRow][move.fromCol] = '\0';
+            int capturedPawnRow = whiteToMove ? move.toRow + 1 : move.toRow - 1;
+            boardCopy[capturedPawnRow][move.toCol] = '\0';
         } else {
-            boardCopy[toRow][toCol] = movingPiece;
-            boardCopy[fromRow][fromCol] = '\0';
+            // Normal move
+            boardCopy[move.toRow][move.toCol] = movingPiece;
+            boardCopy[move.fromRow][move.fromCol] = '\0';
         }
-        return isKingInCheck(boardCopy, whiteToMove);
+        return boardCopy;
     }
 
     /**
@@ -420,7 +425,7 @@ public class LegalMoveGenerator {
                 char piece = board[row][col];
                 if (piece == '\0') continue;
                 if ((whiteToMove && Character.isUpperCase(piece)) || (!whiteToMove && Character.isLowerCase(piece))) {
-                    List<int[]> moves = generateLegalMoves(board, row, col, whiteToMove);
+                    List<Move> moves = generateLegalMoves(board, row, col, whiteToMove);
                     if (!moves.isEmpty()) return false; // The player has at least one legal move
                 }
             }
@@ -442,7 +447,7 @@ public class LegalMoveGenerator {
                 char piece = board[row][col];
                 if (piece == '\0') continue;
                 if ((whiteToMove && Character.isUpperCase(piece)) || (!whiteToMove && Character.isLowerCase(piece))) {
-                    List<int[]> legalMoves = generateLegalMoves(board, row, col, whiteToMove);
+                    List<Move> legalMoves = generateLegalMoves(board, row, col, whiteToMove);
                     if (!legalMoves.isEmpty()) return false; // The player has at least one legal move
                 }
             }

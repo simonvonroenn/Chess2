@@ -6,22 +6,16 @@ import chessboard.Move;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The ChessBot.ChessBot class uses a depth-first search (DFS) approach to brute-force
- * search through capture moves within a given time limit (10 seconds) to determine
- * the best move based on material gain. Checkmate is considered infinitely valuable.
- */
-public class ChessBot {
+public class Engine {
     // Time limit in milliseconds
     public static final long TIME_LIMIT = 2000;
 
     // Piece values in pawn equivalents
-    public static final double PAWN_VALUE = 1.0;
-    public static final double KNIGHT_VALUE = 3.0;
-    public static final double BISHOP_VALUE = 3.0;
-    public static final double ROOK_VALUE = 5.0;
-    public static final double QUEEN_VALUE = 9.0;
-    public static final double KING_VALUE = 1000.0;
+    public static final int PAWN_VALUE = 100;
+    public static final int KNIGHT_VALUE = 300;
+    public static final int BISHOP_VALUE = 320;
+    public static final int ROOK_VALUE = 500;
+    public static final int QUEEN_VALUE = 900;
 
     /**
      * Calculates the best move for the current board state using iterative deepening within
@@ -38,22 +32,27 @@ public class ChessBot {
     // Helper class to store the best move and its evaluation value.
     public static class BestMove {
         public Move move;
-        public double evaluation;
+        public int evaluation;
+        public List<String> moveSequence = new ArrayList<>();
 
-        BestMove(Move move, double evaluation) {
+        BestMove(Move move, int evaluation, List<String> previousMoveSequence) {
             this.move = move;
+            if (move != null) {
+                moveSequence.add(move.toString());
+            }
+            moveSequence.addAll(previousMoveSequence);
             this.evaluation = evaluation;
         }
     }
 
     /**
-     * Evaluates the board based on material balance in pawn equivalents.
+     * Evaluates a position based on material balance in centipawn equivalents.
      *
      * @param board the current board state
      * @return the evaluation value from white's perspective
      */
-    protected static double evaluateBoard(char[][] board) {
-        double evaluation = 0;
+    protected static int evaluatePosition(char[][] board) {
+        int evaluation = 0;
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 char piece = board[row][col];
@@ -63,7 +62,6 @@ public class ChessBot {
                     case 'b' -> BISHOP_VALUE;
                     case 'r' -> ROOK_VALUE;
                     case 'q' -> QUEEN_VALUE;
-                    case 'k' -> KING_VALUE;
                     default -> 0;
                 };
                 if (Character.isUpperCase(piece)) {
@@ -84,9 +82,10 @@ public class ChessBot {
      * @param boardAfter the board state after the move
      * @return the move's value in pawn equivalents
      */
+    @Deprecated
     protected static double evaluateMove(char[][] boardBefore, char[][] boardAfter) {
-        double valueBefore = evaluateBoard(boardBefore);
-        double valueAfter = evaluateBoard(boardAfter);
+        double valueBefore = evaluatePosition(boardBefore);
+        double valueAfter = evaluatePosition(boardAfter);
         return valueAfter - valueBefore;
     }
 
@@ -97,6 +96,7 @@ public class ChessBot {
      * @param board the board state to apply the move to
      * @param move the move to apply
      */
+    @Deprecated
     protected static void applyMove(char[][] board, Move move) {
         char movingPiece = board[move.fromRow][move.fromCol];
         board[move.toRow][move.toCol] = movingPiece;
@@ -117,10 +117,7 @@ public class ChessBot {
                 char piece = board[row][col];
                 if (piece == '\0') continue;
                 if ((whiteToMove && Character.isUpperCase(piece)) || (!whiteToMove && Character.isLowerCase(piece))) {
-                    List<int[]> moves = LegalMoveGenerator.generateLegalMoves(board, row, col, whiteToMove);
-                    for (int[] m : moves) {
-                        allMoves.add(new Move(row, col, m[0], m[1]));
-                    }
+                    allMoves.addAll(LegalMoveGenerator.generateLegalMoves(board, row, col, whiteToMove));
                 }
             }
         }

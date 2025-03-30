@@ -1,4 +1,4 @@
-import chessbot.ChessBot;
+import chessbot.Engine;
 import chessboard.Chessboard;
 import processing.core.PApplet;
 
@@ -16,7 +16,7 @@ public class Chess2 extends PApplet {
     public static final int TILE_SIZE = BOARD_SIZE / 8;
     public static boolean isGameOver = false;
     private final Chessboard board = new Chessboard(this, TILE_SIZE, FEN);
-    private final ChessBot bot = new ChessBot();
+    private final Engine bot = new Engine();
 
     /**
      * Initializes the board.

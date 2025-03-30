@@ -5,7 +5,8 @@ import processing.core.PApplet;
 public class Chess2 extends PApplet {
 
     /** The starting position. */
-    public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    //public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    public static final String FEN = "rnbqk2r/pp1pbppp/4pn2/6B1/8/2N2N2/PPP1QPPP/R3KB1R w KQkq - 2 8";
 
     /** Set to true if the user wants to play white; Set to false if the user wants to play black */
     public static final boolean playWhite = true;

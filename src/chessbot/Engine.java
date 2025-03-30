@@ -4,11 +4,13 @@ import chessboard.LegalMoveGenerator;
 import chessboard.Move;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Engine {
     // Time limit in milliseconds
-    public static final long TIME_LIMIT = 2000;
+    public static final long TIME_LIMIT = 5000;
 
     // Piece values in pawn equivalents
     public static final int PAWN_VALUE = 100;
@@ -56,14 +58,7 @@ public class Engine {
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 char piece = board[row][col];
-                double value = switch (Character.toLowerCase(piece)) {
-                    case 'p' -> PAWN_VALUE;
-                    case 'n' -> KNIGHT_VALUE;
-                    case 'b' -> BISHOP_VALUE;
-                    case 'r' -> ROOK_VALUE;
-                    case 'q' -> QUEEN_VALUE;
-                    default -> 0;
-                };
+                int value = getPieceValue(piece);
                 if (Character.isUpperCase(piece)) {
                     evaluation += value;
                 } else {
@@ -72,6 +67,17 @@ public class Engine {
             }
         }
         return evaluation;
+    }
+
+    private static int getPieceValue(char piece) {
+        return switch (Character.toLowerCase(piece)) {
+            case 'p' -> PAWN_VALUE;
+            case 'n' -> KNIGHT_VALUE;
+            case 'b' -> BISHOP_VALUE;
+            case 'r' -> ROOK_VALUE;
+            case 'q' -> QUEEN_VALUE;
+            default -> 0;
+        };
     }
 
     /**
@@ -122,5 +128,32 @@ public class Engine {
             }
         }
         return allMoves;
+    }
+
+    protected static void orderMoves(char[][] board, List<Move> moves) {
+        Map<Move, Integer> evaluationCache = new HashMap<>();
+        for (Move move : moves) {
+            evaluationCache.put(move, guessMoveScore(board, move));
+        }
+        // sort in descending order
+        moves.sort((m1, m2) -> Integer.compare(evaluationCache.get(m2), evaluationCache.get(m1)));
+    }
+
+    private static int guessMoveScore(char[][] board, Move move) {
+        int score = 0;
+        char pieceToMove = board[move.fromRow][move.fromCol];
+        int movePieceVal = getPieceValue(pieceToMove);
+
+        if (move.isCheck) {
+            score += 10 * movePieceVal;
+        }
+
+        if (move.isCapture) {
+            char pieceToCapture = board[move.toRow][move.toCol];
+            int capturePieceVal = getPieceValue(pieceToCapture);
+            score += 10 * capturePieceVal - movePieceVal;
+        }
+
+        return score;
     }
 }

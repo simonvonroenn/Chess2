@@ -9,7 +9,7 @@ import java.util.List;
 
 public class DepthFirstSearchStrategy {
     // Max depth for DFS
-    public static final int MAX_DEPTH = 4;
+    public static final int MAX_DEPTH = 10;
 
     /**
      * Performs iterative deepening search up to a maximum depth within the given time limit.
@@ -21,13 +21,14 @@ public class DepthFirstSearchStrategy {
     public static BestMove iterativeDeepeningSearch(char[][] board, boolean whiteToMove) {
         BestMove bestMove = null;
         long startTime = System.currentTimeMillis();
-        for (int depth = 4; depth <= MAX_DEPTH; depth+=2) {
+        for (int depth = 2; depth <= MAX_DEPTH; depth++) {
             bestMove = depthLimitedDFS(board, whiteToMove, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, startTime);
             if (System.currentTimeMillis() - startTime >= Engine.TIME_LIMIT) {
                 System.out.println("Reached depth: " + depth);
                 break;
             }
         }
+        System.out.printf("Calculated for %d milliseconds.\n", System.currentTimeMillis() - startTime);
         return bestMove;
     }
 
@@ -44,11 +45,13 @@ public class DepthFirstSearchStrategy {
      */
     private static BestMove depthLimitedDFS(char[][] board, boolean whiteToMove, int depth, int alpha, int beta, long startTime) {
         // Terminate search if time limit reached
-        /*
         if (System.currentTimeMillis() - startTime >= Engine.TIME_LIMIT) {
-            return new BestMove(null, Engine.evaluateBoard(board));
+            return new BestMove(null, Engine.evaluatePosition(board), Collections.emptyList());
         }
-        */
+        // At depth 0, return board evaluation.
+        if (depth == 0) {
+            return new BestMove(null, Engine.evaluatePosition(board), Collections.emptyList());
+        }
         // Generate legal moves for current player
         List<Move> moves = Engine.generateAllLegalMoves(board, whiteToMove);
         if (moves.isEmpty()) {
@@ -58,24 +61,18 @@ public class DepthFirstSearchStrategy {
             }
             return new BestMove(null, 0, Collections.emptyList());
         }
-        // At depth 0, return board evaluation.
-        if (depth == 0) {
-            return new BestMove(null, Engine.evaluatePosition(board), Collections.emptyList());
-        }
-
+        //TODO: improve speed
+        // Engine.orderMoves(board, moves);
         BestMove bestMove = null;
-        // Negamax: maximize the evaluation for current player.
         for (Move move : moves) {
             char[][] boardCopy = LegalMoveGenerator.applyMove(board, move, whiteToMove);
             BestMove response;
-            if (move.isCapture || move.isCheck) {
+            if (depth == 1 && (move.isCapture || move.isCheck)) {
                 response = depthLimitedDFS(boardCopy, !whiteToMove, depth, alpha, beta, startTime);
             } else {
                 response = depthLimitedDFS(boardCopy, !whiteToMove, depth - 1, alpha, beta, startTime);
             }
             int eval = response.evaluation;
-            //double moveValue = Engine.evaluateMove(board, boardCopy);
-            //double totalEval = moveValue + response.evaluation;
             if (whiteToMove) {
                 if (bestMove == null ||  eval > bestMove.evaluation) {
                     bestMove = new BestMove(move, eval, response.moveSequence);

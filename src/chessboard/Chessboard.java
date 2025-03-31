@@ -1,6 +1,6 @@
 package chessboard;
 
-import chessbot.Engine;
+import engine.Engine;
 import processing.core.PApplet;
 import processing.core.PImage;
 

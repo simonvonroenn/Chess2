@@ -1,4 +1,4 @@
-package chessbot;
+package engine;
 
 import chessboard.LegalMoveGenerator;
 import chessboard.Move;
@@ -11,13 +11,6 @@ import java.util.Map;
 public class Engine {
     // Time limit in milliseconds
     public static final long TIME_LIMIT = 5000;
-
-    // Piece values in pawn equivalents
-    public static final int PAWN_VALUE = 100;
-    public static final int KNIGHT_VALUE = 300;
-    public static final int BISHOP_VALUE = 320;
-    public static final int ROOK_VALUE = 500;
-    public static final int QUEEN_VALUE = 900;
 
     /**
      * Calculates the best move for the current board state using iterative deepening within
@@ -55,29 +48,31 @@ public class Engine {
      */
     protected static int evaluatePosition(char[][] board) {
         int evaluation = 0;
+        int pieceValueSum = 0;
+        int[] whiteKingPos = new int[0];
+        int[] blackKingPos = new int[0];
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 char piece = board[row][col];
-                int value = getPieceValue(piece);
-                if (Character.isUpperCase(piece)) {
-                    evaluation += value;
+                int pieceValue = PieceValues.getPieceValue(piece);
+                int pieceTableValue = Character.toLowerCase(piece) != 'k' ? PieceValues.getPieceTableValue(piece, row, col, 0) : 0;
+                if (piece == 'K') {
+                    whiteKingPos = new int[]{row, col};
+                } else if (piece == 'k') {
+                    blackKingPos = new int[]{row, col};
                 } else {
-                    evaluation -= value;
+                    pieceValueSum += pieceValue;
+                    if (Character.isUpperCase(piece)) {
+                        evaluation += pieceValue + pieceTableValue;
+                    } else {
+                        evaluation -= pieceValue + pieceTableValue;
+                    }
                 }
             }
         }
+        evaluation += PieceValues.KING + PieceValues.getPieceTableValue('K', whiteKingPos[0], whiteKingPos[1], pieceValueSum);
+        evaluation -= PieceValues.KING + PieceValues.getPieceTableValue('k', blackKingPos[0], blackKingPos[1], pieceValueSum);
         return evaluation;
-    }
-
-    private static int getPieceValue(char piece) {
-        return switch (Character.toLowerCase(piece)) {
-            case 'p' -> PAWN_VALUE;
-            case 'n' -> KNIGHT_VALUE;
-            case 'b' -> BISHOP_VALUE;
-            case 'r' -> ROOK_VALUE;
-            case 'q' -> QUEEN_VALUE;
-            default -> 0;
-        };
     }
 
     /**
@@ -142,7 +137,7 @@ public class Engine {
     private static int guessMoveScore(char[][] board, Move move) {
         int score = 0;
         char pieceToMove = board[move.fromRow][move.fromCol];
-        int movePieceVal = getPieceValue(pieceToMove);
+        int movePieceVal = PieceValues.getPieceValue(pieceToMove);
 
         if (move.isCheck) {
             score += 10 * movePieceVal;
@@ -150,7 +145,7 @@ public class Engine {
 
         if (move.isCapture) {
             char pieceToCapture = board[move.toRow][move.toCol];
-            int capturePieceVal = getPieceValue(pieceToCapture);
+            int capturePieceVal = PieceValues.getPieceValue(pieceToCapture);
             score += 10 * capturePieceVal - movePieceVal;
         }
 

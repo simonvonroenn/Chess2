@@ -1,15 +1,15 @@
-package chessbot;
+package engine;
 
 import chessboard.LegalMoveGenerator;
 import chessboard.Move;
-import chessbot.Engine.BestMove;
+import engine.Engine.BestMove;
 
 import java.util.Collections;
 import java.util.List;
 
 public class DepthFirstSearchStrategy {
     // Max depth for DFS
-    public static final int MAX_DEPTH = 10;
+    public static final int MAX_DEPTH = 4;
 
     /**
      * Performs iterative deepening search up to a maximum depth within the given time limit.
@@ -21,14 +21,17 @@ public class DepthFirstSearchStrategy {
     public static BestMove iterativeDeepeningSearch(char[][] board, boolean whiteToMove) {
         BestMove bestMove = null;
         long startTime = System.currentTimeMillis();
-        for (int depth = 2; depth <= MAX_DEPTH; depth++) {
+        for (int depth = 4; depth <= MAX_DEPTH; depth++) {
             bestMove = depthLimitedDFS(board, whiteToMove, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, startTime);
+            /*
             if (System.currentTimeMillis() - startTime >= Engine.TIME_LIMIT) {
                 System.out.println("Reached depth: " + depth);
                 break;
             }
+             */
         }
         System.out.printf("Calculated for %d milliseconds.\n", System.currentTimeMillis() - startTime);
+        System.out.printf("Bestmoves: %s\n", bestMove.moveSequence);
         return bestMove;
     }
 
@@ -45,9 +48,12 @@ public class DepthFirstSearchStrategy {
      */
     private static BestMove depthLimitedDFS(char[][] board, boolean whiteToMove, int depth, int alpha, int beta, long startTime) {
         // Terminate search if time limit reached
+        //TODO: engine makes weird moves with time limit
+        /*
         if (System.currentTimeMillis() - startTime >= Engine.TIME_LIMIT) {
             return new BestMove(null, Engine.evaluatePosition(board), Collections.emptyList());
         }
+         */
         // At depth 0, return board evaluation.
         if (depth == 0) {
             return new BestMove(null, Engine.evaluatePosition(board), Collections.emptyList());

@@ -83,13 +83,19 @@ public class PieceValues {
     };
 
     public static int getPieceValue(char piece) {
-        return switch (Character.toLowerCase(piece)) {
-            case 'p' -> PAWN;
-            case 'n' -> KNIGHT;
-            case 'b' -> BISHOP;
-            case 'r' -> ROOK;
-            case 'q' -> QUEEN;
-            case 'k' -> KING;
+        return switch (piece) {
+            case 'P' -> PAWN;
+            case 'N' -> KNIGHT;
+            case 'B' -> BISHOP;
+            case 'R' -> ROOK;
+            case 'Q' -> QUEEN;
+            case 'K' -> KING;
+            case 'p' -> -PAWN;
+            case 'n' -> -KNIGHT;
+            case 'b' -> -BISHOP;
+            case 'r' -> -ROOK;
+            case 'q' -> -QUEEN;
+            case 'k' -> -KING;
             default -> 0;
         };
     }
@@ -107,14 +113,14 @@ public class PieceValues {
                 float frac = (float) pieceValueSum / MAX_PIECE_VALUE_SUM;
                 yield  Math.round(frac * KING_MIDGAME_TABLE[whiteIdx] + (1 - frac) * KING_ENDGAME_TABLE[whiteIdx]);
             }
-            case 'p' -> PAWN_TABLE[blackIdx];
-            case 'n' -> KNIGHT_TABLE[blackIdx];
-            case 'b' -> BISHOP_TABLE[blackIdx];
-            case 'r' -> ROOK_TABLE[blackIdx];
-            case 'q' -> QUEEN_TABLE[blackIdx];
+            case 'p' -> -PAWN_TABLE[blackIdx];
+            case 'n' -> -KNIGHT_TABLE[blackIdx];
+            case 'b' -> -BISHOP_TABLE[blackIdx];
+            case 'r' -> -ROOK_TABLE[blackIdx];
+            case 'q' -> -QUEEN_TABLE[blackIdx];
             case 'k' -> {
                 float frac = (float) pieceValueSum / MAX_PIECE_VALUE_SUM;
-                yield  Math.round(frac * KING_MIDGAME_TABLE[blackIdx] + (1 - frac) * KING_ENDGAME_TABLE[blackIdx]);
+                yield  -Math.round(frac * KING_MIDGAME_TABLE[blackIdx] + (1 - frac) * KING_ENDGAME_TABLE[blackIdx]);
             }
             default -> 0;
         };

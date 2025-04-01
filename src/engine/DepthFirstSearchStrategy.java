@@ -19,10 +19,11 @@ public class DepthFirstSearchStrategy {
      * @return the best move found so far
      */
     public static BestMove iterativeDeepeningSearch(char[][] board, boolean whiteToMove) {
-        BestMove bestMove = null;
         long startTime = System.currentTimeMillis();
+        BestMove bestMove = null;
+        int[] evalInfo = Engine.evaluatePosition(board);
         for (int depth = 4; depth <= MAX_DEPTH; depth++) {
-            bestMove = depthLimitedDFS(board, whiteToMove, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, startTime);
+            bestMove = depthLimitedDFS(board, evalInfo, whiteToMove, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, startTime);
             /*
             if (System.currentTimeMillis() - startTime >= Engine.TIME_LIMIT) {
                 System.out.println("Reached depth: " + depth);
@@ -46,17 +47,17 @@ public class DepthFirstSearchStrategy {
      * @param startTime the start time of the search
      * @return a BestMove object containing the best move and its evaluation
      */
-    private static BestMove depthLimitedDFS(char[][] board, boolean whiteToMove, int depth, int alpha, int beta, long startTime) {
+    private static BestMove depthLimitedDFS(char[][] board, int[] evalInfo, boolean whiteToMove, int depth, int alpha, int beta, long startTime) {
         // Terminate search if time limit reached
         //TODO: engine makes weird moves with time limit
         /*
         if (System.currentTimeMillis() - startTime >= Engine.TIME_LIMIT) {
-            return new BestMove(null, Engine.evaluatePosition(board), Collections.emptyList());
+            return new BestMove(null, evalInfo[0], Collections.emptyList());
         }
          */
         // At depth 0, return board evaluation.
         if (depth == 0) {
-            return new BestMove(null, Engine.evaluatePosition(board), Collections.emptyList());
+            return new BestMove(null, evalInfo[0], Collections.emptyList());
         }
         // Generate legal moves for current player
         List<Move> moves = Engine.generateAllLegalMoves(board, whiteToMove);
@@ -69,34 +70,34 @@ public class DepthFirstSearchStrategy {
         }
         //TODO: improve speed
         // Engine.orderMoves(board, moves);
-        BestMove bestMove = null;
+        BestMove bestMoveResponse = null;
         for (Move move : moves) {
             char[][] boardCopy = LegalMoveGenerator.applyMove(board, move, whiteToMove);
+            int[] newEvalInfo = Engine.evaluateMove(board, evalInfo, move);
             BestMove response;
             if (depth == 1 && (move.isCapture || move.isCheck)) {
-                response = depthLimitedDFS(boardCopy, !whiteToMove, depth, alpha, beta, startTime);
+                response = depthLimitedDFS(boardCopy, newEvalInfo, !whiteToMove, depth, alpha, beta, startTime);
             } else {
-                response = depthLimitedDFS(boardCopy, !whiteToMove, depth - 1, alpha, beta, startTime);
+                response = depthLimitedDFS(boardCopy, newEvalInfo, !whiteToMove, depth - 1, alpha, beta, startTime);
             }
-            int eval = response.evaluation;
             if (whiteToMove) {
-                if (bestMove == null ||  eval > bestMove.evaluation) {
-                    bestMove = new BestMove(move, eval, response.moveSequence);
+                if (bestMoveResponse == null ||  response.evaluation > bestMoveResponse.evaluation) {
+                    bestMoveResponse = new BestMove(move, response.evaluation, response.moveSequence);
                 }
-                alpha = Math.max(alpha, bestMove.evaluation);
+                alpha = Math.max(alpha, bestMoveResponse.evaluation);
             } else {
-                if (bestMove == null || eval < bestMove.evaluation) {
-                    bestMove = new BestMove(move, eval, response.moveSequence);
+                if (bestMoveResponse == null || response.evaluation < bestMoveResponse.evaluation) {
+                    bestMoveResponse = new BestMove(move, response.evaluation, response.moveSequence);
                 }
-                beta = Math.min(beta, bestMove.evaluation);
+                beta = Math.min(beta, bestMoveResponse.evaluation);
             }
             if (alpha >= beta) {
                 break;
             }
             if (depth == MAX_DEPTH) {
-                System.out.printf("%s %d %s\n", move, eval, response.moveSequence);
+                System.out.printf("%s %d %s\n", move, response.evaluation, response.moveSequence);
             }
         }
-        return bestMove;
+        return bestMoveResponse;
     }
 }

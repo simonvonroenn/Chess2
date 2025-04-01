@@ -1,5 +1,6 @@
 package engine;
 
+import chessboard.Chessboard;
 import chessboard.LegalMoveGenerator;
 import chessboard.Move;
 
@@ -11,6 +12,8 @@ import java.util.Map;
 public class Engine {
     // Time limit in milliseconds
     public static final long TIME_LIMIT = 5000;
+    private static long _debugTime_GenerateAllLegalMoves = 0;
+    private static long _debugTime_EvaluatePosition = 0;
 
     /**
      * Calculates the best move for the current board state using iterative deepening within
@@ -21,7 +24,12 @@ public class Engine {
      * @return the best move found, or null if no move is available
      */
     public BestMove calculateBestMove(char[][] board, boolean whiteToMove) {
-        return DepthFirstSearchStrategy.iterativeDeepeningSearch(board, whiteToMove);
+        BestMove bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(board, whiteToMove);
+        System.out.printf("Calculation parts: generate all legal moves: %dms, evaluate Position: %dms\n",
+                _debugTime_GenerateAllLegalMoves, _debugTime_EvaluatePosition);
+        _debugTime_GenerateAllLegalMoves = 0;
+        _debugTime_EvaluatePosition = 0;
+        return bestMove;
     }
 
     // Helper class to store the best move and its evaluation value.
@@ -41,14 +49,40 @@ public class Engine {
     }
 
     /**
-     * Evaluates a position based on material balance in centipawn equivalents.
+     * Applies on a given board evaluation the eval delta given a certain move.
+     *
+     * @param board the board state
+     * @param evalInfo the evaluation of the board state before the move and the current sum of all piece values
+     * @param move the move
+     * @return the evaluation of the board state after the move and the new pieceValueSum
+     */
+    public static int[] evaluateMove(char[][] board, int[] evalInfo, Move move) {
+        long startTime = System.currentTimeMillis();
+        int capturedPieceValue = 0;
+        int newPieceValueSum = evalInfo[1];
+        if (move.isCapture) {
+            char capturedPiece = board[move.toRow][move.toCol];
+            capturedPieceValue = PieceValues.getPieceValue(capturedPiece) + PieceValues.getPieceTableValue(capturedPiece, move.toRow, move.toCol, evalInfo[1] );
+            newPieceValueSum -= Math.abs(PieceValues.getPieceValue(capturedPiece));
+        }
+        char movedPiece = board[move.fromRow][move.fromCol];
+        int movePieceTableValueBefore = PieceValues.getPieceTableValue(movedPiece, move.fromRow, move.fromCol, evalInfo[1]);
+        int movePieceTableValueAfter = PieceValues.getPieceTableValue(movedPiece, move.toRow, move.toCol, newPieceValueSum);
+        int evalDelta = -capturedPieceValue + movePieceTableValueAfter - movePieceTableValueBefore;
+        _debugTime_EvaluatePosition += System.currentTimeMillis() - startTime;
+        return new int[]{evalInfo[0] + evalDelta, newPieceValueSum};
+    }
+
+    /**
+     * Evaluates a position based on piece value and piece position value.
      *
      * @param board the current board state
-     * @return the evaluation value from white's perspective
+     * @return the evaluation and the sum of all piece values
      */
-    protected static int evaluatePosition(char[][] board) {
+    public static int[] evaluatePosition(char[][] board) {
         int evaluation = 0;
         int pieceValueSum = 0;
+        int pieceTotalValue;
         int[] whiteKingPos = new int[0];
         int[] blackKingPos = new int[0];
         for (int row = 0; row < 8; row++) {
@@ -61,33 +95,20 @@ public class Engine {
                 } else if (piece == 'k') {
                     blackKingPos = new int[]{row, col};
                 } else {
-                    pieceValueSum += pieceValue;
-                    if (Character.isUpperCase(piece)) {
-                        evaluation += pieceValue + pieceTableValue;
-                    } else {
-                        evaluation -= pieceValue + pieceTableValue;
-                    }
+                    pieceValueSum += Math.abs(pieceValue);
+                    pieceTotalValue = pieceValue + pieceTableValue;
+                    evaluation += pieceTotalValue;
+                    Chessboard._debug_pieceValues[row][col] = Math.abs(pieceTotalValue);
                 }
             }
         }
-        evaluation += PieceValues.KING + PieceValues.getPieceTableValue('K', whiteKingPos[0], whiteKingPos[1], pieceValueSum);
-        evaluation -= PieceValues.KING + PieceValues.getPieceTableValue('k', blackKingPos[0], blackKingPos[1], pieceValueSum);
-        return evaluation;
-    }
-
-    /**
-     * Evaluates the move by comparing the board state before and after the move.
-     * Only material gain (captures) is considered.
-     *
-     * @param boardBefore the board state before the move
-     * @param boardAfter the board state after the move
-     * @return the move's value in pawn equivalents
-     */
-    @Deprecated
-    protected static double evaluateMove(char[][] boardBefore, char[][] boardAfter) {
-        double valueBefore = evaluatePosition(boardBefore);
-        double valueAfter = evaluatePosition(boardAfter);
-        return valueAfter - valueBefore;
+        pieceTotalValue = PieceValues.KING + PieceValues.getPieceTableValue('K', whiteKingPos[0], whiteKingPos[1], pieceValueSum);
+        evaluation += pieceTotalValue;
+        Chessboard._debug_pieceValues[whiteKingPos[0]][whiteKingPos[1]] = Math.abs(pieceTotalValue);
+        pieceTotalValue = -PieceValues.KING + PieceValues.getPieceTableValue('k', blackKingPos[0], blackKingPos[1], pieceValueSum);
+        evaluation += pieceTotalValue;
+        Chessboard._debug_pieceValues[blackKingPos[0]][blackKingPos[1]] = Math.abs(pieceTotalValue);
+        return new int[]{evaluation, pieceValueSum};
     }
 
     /**
@@ -112,6 +133,7 @@ public class Engine {
      * @return a list of legal moves
      */
     protected static List<Move> generateAllLegalMoves(char[][] board, boolean whiteToMove) {
+        long startTime = System.currentTimeMillis();
         List<Move> allMoves = new ArrayList<>();
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
@@ -122,6 +144,7 @@ public class Engine {
                 }
             }
         }
+        _debugTime_GenerateAllLegalMoves += System.currentTimeMillis() - startTime;
         return allMoves;
     }
 

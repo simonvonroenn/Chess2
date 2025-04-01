@@ -2,6 +2,7 @@ package chessboard;
 
 import engine.Engine;
 import processing.core.PApplet;
+import processing.core.PConstants;
 import processing.core.PImage;
 
 import javax.swing.JOptionPane;
@@ -30,6 +31,8 @@ public class Chessboard {
 
     public static double evaluation;
 
+    public static int[][] _debug_pieceValues = new int[8][8];
+
     /**
      * Integrates Processing in Java.
      */
@@ -54,6 +57,7 @@ public class Chessboard {
                 }
             }
         }
+        evaluation = Engine.evaluatePosition(board)[0];
     }
 
     /**
@@ -97,6 +101,10 @@ public class Chessboard {
                 sketch.rect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 if (Character.isLetter(board[row][col])) {
                     sketch.image(images.get(board[row][col]), col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    sketch.fill(255, 0, 0);
+                    sketch.textSize(15);
+                    sketch.textAlign(PConstants.CENTER, PConstants.CENTER);
+                    sketch.text(_debug_pieceValues[row][col], col * TILE_SIZE + TILE_SIZE/2,row * TILE_SIZE + TILE_SIZE/2);
                 }
             }
         }
@@ -219,6 +227,8 @@ public class Chessboard {
         char capturedPiece = board[move.toRow][move.toCol];
         board[move.toRow][move.toCol] = board[move.fromRow][move.fromCol];
         board[move.fromRow][move.fromCol] = '\0';
+
+        Engine.evaluatePosition(board);
 
         boolean isGameOver = postMoveCalculations(move.toRow, move.toCol, movingPiece, capturedPiece);
 

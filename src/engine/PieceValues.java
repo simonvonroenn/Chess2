@@ -102,7 +102,7 @@ public class PieceValues {
 
     public static int getPieceTableValue(char piece, int row, int col, int pieceValueSum) {
         int whiteIdx = 8 * row + col;
-        int blackIdx = 63 - (8 * row + col);
+        int blackIdx = 56 - 8 * row + col;
         return switch (piece) {
             case 'P' -> PAWN_TABLE[whiteIdx];
             case 'N' -> KNIGHT_TABLE[whiteIdx];
@@ -111,7 +111,7 @@ public class PieceValues {
             case 'Q' -> QUEEN_TABLE[whiteIdx];
             case 'K' -> {
                 float frac = (float) pieceValueSum / MAX_PIECE_VALUE_SUM;
-                yield  Math.round(frac * KING_MIDGAME_TABLE[whiteIdx] + (1 - frac) * KING_ENDGAME_TABLE[whiteIdx]);
+                yield Math.round(frac * KING_MIDGAME_TABLE[whiteIdx] + (1 - frac) * KING_ENDGAME_TABLE[whiteIdx]);
             }
             case 'p' -> -PAWN_TABLE[blackIdx];
             case 'n' -> -KNIGHT_TABLE[blackIdx];
@@ -120,7 +120,7 @@ public class PieceValues {
             case 'q' -> -QUEEN_TABLE[blackIdx];
             case 'k' -> {
                 float frac = (float) pieceValueSum / MAX_PIECE_VALUE_SUM;
-                yield  -Math.round(frac * KING_MIDGAME_TABLE[blackIdx] + (1 - frac) * KING_ENDGAME_TABLE[blackIdx]);
+                yield -Math.round(frac * KING_MIDGAME_TABLE[blackIdx] + (1 - frac) * KING_ENDGAME_TABLE[blackIdx]);
             }
             default -> 0;
         };

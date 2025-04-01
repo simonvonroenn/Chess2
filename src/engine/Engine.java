@@ -11,7 +11,8 @@ import java.util.Map;
 
 public class Engine {
     // Time limit in milliseconds
-    public static final long TIME_LIMIT = 5000;
+    protected static final long TIME_LIMIT = 5000;
+    public static long _debugTime_ApplyMove = 0;
     private static long _debugTime_GenerateAllLegalMoves = 0;
     private static long _debugTime_EvaluatePosition = 0;
 
@@ -24,11 +25,16 @@ public class Engine {
      * @return the best move found, or null if no move is available
      */
     public BestMove calculateBestMove(char[][] board, boolean whiteToMove) {
-        BestMove bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(board, whiteToMove);
-        System.out.printf("Calculation parts: generate all legal moves: %dms, evaluate Position: %dms\n",
-                _debugTime_GenerateAllLegalMoves, _debugTime_EvaluatePosition);
+        _debugTime_ApplyMove = 0;
+        char[][] boardCopy = LegalMoveGenerator.copyBoard(board);
+        BestMove bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(boardCopy, whiteToMove);
+        System.out.printf("Calculation parts: generate all legal moves: %dms, " +
+                        "evaluate Position: %dms," +
+                        "applyMove: %dms\n",
+                _debugTime_GenerateAllLegalMoves, _debugTime_EvaluatePosition, _debugTime_ApplyMove);
         _debugTime_GenerateAllLegalMoves = 0;
         _debugTime_EvaluatePosition = 0;
+        _debugTime_ApplyMove = 0;
         return bestMove;
     }
 

@@ -72,14 +72,15 @@ public class DepthFirstSearchStrategy {
         // Engine.orderMoves(board, moves);
         BestMove bestMoveResponse = null;
         for (Move move : moves) {
-            char[][] boardCopy = LegalMoveGenerator.applyMove(board, move, whiteToMove);
             int[] newEvalInfo = Engine.evaluateMove(board, evalInfo, move);
+            char pieceCaptured = LegalMoveGenerator.applyMove(board, move, whiteToMove);
             BestMove response;
             if (depth == 1 && (move.isCapture || move.isCheck)) {
-                response = depthLimitedDFS(boardCopy, newEvalInfo, !whiteToMove, depth, alpha, beta, startTime);
+                response = depthLimitedDFS(board, newEvalInfo, !whiteToMove, depth, alpha, beta, startTime);
             } else {
-                response = depthLimitedDFS(boardCopy, newEvalInfo, !whiteToMove, depth - 1, alpha, beta, startTime);
+                response = depthLimitedDFS(board, newEvalInfo, !whiteToMove, depth - 1, alpha, beta, startTime);
             }
+            LegalMoveGenerator.undoMove(board, move, whiteToMove, pieceCaptured);
             if (whiteToMove) {
                 if (bestMoveResponse == null ||  response.evaluation > bestMoveResponse.evaluation) {
                     bestMoveResponse = new BestMove(move, response.evaluation, response.moveSequence);

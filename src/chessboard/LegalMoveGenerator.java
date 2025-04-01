@@ -1,5 +1,7 @@
 package chessboard;
 
+import engine.Engine;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,13 +45,14 @@ public class LegalMoveGenerator {
         // Filter out moves that leave the king in check
         List<Move> legalMoves = new ArrayList<>();
         for (Move move : pseudoMoves) {
-            char[][] boardCopy = applyMove(board, move, whiteToMove);
-            if (!isKingInCheck(boardCopy, whiteToMove)) { // Check if move leaves own king in check
-                if (isKingInCheck(boardCopy, !whiteToMove)) { // Check if move checks the opponent's king
+            char pieceCaptured = applyMove(board, move, whiteToMove);
+            if (!isKingInCheck(board, whiteToMove)) { // Check if move leaves own king in check
+                if (isKingInCheck(board, !whiteToMove)) { // Check if move checks the opponent's king
                     move.setCheck();
                 }
                 legalMoves.add(move);
             }
+            undoMove(board, move, whiteToMove, pieceCaptured);
         }
         return legalMoves;
     }
@@ -263,32 +266,65 @@ public class LegalMoveGenerator {
      * @param whiteToMove if white to move
      * @return the position after move application
      */
-    public static char[][] applyMove(char[][] board, Move move, boolean whiteToMove) {
-        char[][] boardCopy = copyBoard(board);
-        char movingPiece = boardCopy[move.fromRow][move.fromCol];
+    public static char applyMove(char[][] board, Move move, boolean whiteToMove) {
+        long startTime = System.currentTimeMillis();
+        //char[][] boardCopy = copyBoard(board);
+        char pieceCaptured = board[move.toRow][move.toCol];
+        char movingPiece = board[move.fromRow][move.fromCol];
         if (Character.toLowerCase(movingPiece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
             // Simulate castling
-            boardCopy[move.toRow][move.toCol] = movingPiece;
-            boardCopy[move.fromRow][move.fromCol] = '\0';
+            board[move.toRow][move.toCol] = movingPiece;
+            board[move.fromRow][move.fromCol] = '\0';
             if (move.toCol > move.fromCol) { // kingside
-                boardCopy[move.toRow][move.toCol - 1] = boardCopy[move.toRow][7];
-                boardCopy[move.toRow][7] = '\0';
+                board[move.toRow][move.toCol - 1] = board[move.toRow][7];
+                board[move.toRow][7] = '\0';
             } else { // queenside
-                boardCopy[move.toRow][move.toCol + 1] = boardCopy[move.toRow][0];
-                boardCopy[move.toRow][0] = '\0';
+                board[move.toRow][move.toCol + 1] = board[move.toRow][0];
+                board[move.toRow][0] = '\0';
             }
-        } else if (Character.toLowerCase(movingPiece) == 'p' && move.fromCol != move.toCol && boardCopy[move.toRow][move.toCol] == '\0') {
+        } else if (Character.toLowerCase(movingPiece) == 'p' && move.fromCol != move.toCol && board[move.toRow][move.toCol] == '\0') {
             // Simulate en passant capture
-            boardCopy[move.toRow][move.toCol] = movingPiece;
-            boardCopy[move.fromRow][move.fromCol] = '\0';
+            board[move.toRow][move.toCol] = movingPiece;
+            board[move.fromRow][move.fromCol] = '\0';
             int capturedPawnRow = whiteToMove ? move.toRow + 1 : move.toRow - 1;
-            boardCopy[capturedPawnRow][move.toCol] = '\0';
+            pieceCaptured = board[capturedPawnRow][move.toCol];
+            board[capturedPawnRow][move.toCol] = '\0';
         } else {
             // Normal move
-            boardCopy[move.toRow][move.toCol] = movingPiece;
-            boardCopy[move.fromRow][move.fromCol] = '\0';
+            board[move.toRow][move.toCol] = movingPiece;
+            board[move.fromRow][move.fromCol] = '\0';
         }
-        return boardCopy;
+        Engine._debugTime_ApplyMove += System.currentTimeMillis() - startTime;
+        return pieceCaptured;
+    }
+
+    public static void undoMove(char[][] board, Move move, boolean whiteToMove, char pieceCaptured) {
+        long startTime = System.currentTimeMillis();
+        char movingPiece = board[move.toRow][move.toCol];
+        if (Character.toLowerCase(movingPiece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
+            // Simulate castling
+            board[move.fromRow][move.fromCol] = movingPiece;
+            board[move.toRow][move.toCol] = '\0';
+            if (move.toCol > move.fromCol) { // kingside
+                board[move.toRow][7] = board[move.toRow][move.toCol - 1];
+                board[move.toRow][move.toCol - 1] = '\0';
+            } else { // queenside
+                board[move.toRow][0] = board[move.toRow][move.toCol + 1];
+                board[move.toRow][move.toCol + 1] = '\0';
+            }
+        } else if (Character.toLowerCase(movingPiece) == 'p' && move.fromCol != move.toCol
+                    && enPassantTarget != null && move.toRow == enPassantTarget[0] && move.toCol == enPassantTarget[1]) {
+            // Simulate en passant capture
+            board[move.fromRow][move.fromCol] = movingPiece;
+            board[move.toRow][move.toCol] = '\0';
+            int capturedPawnRow = whiteToMove ? move.toRow + 1 : move.toRow - 1;
+            board[capturedPawnRow][move.toCol] = whiteToMove ? 'p' : 'P';
+        } else {
+            // Normal move
+            board[move.fromRow][move.fromCol] = movingPiece;
+            board[move.toRow][move.toCol] = pieceCaptured;
+        }
+        Engine._debugTime_ApplyMove += System.currentTimeMillis() - startTime;
     }
 
     /**

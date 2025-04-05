@@ -73,7 +73,7 @@ public class DepthFirstSearchStrategy {
             }
             return new BestMove(null, 0, Collections.emptyList());
         }
-        if (depth == MAX_DEPTH) Engine.orderMoves(board, moves, evalInfo[1]);
+        Engine.orderMoves(board, moves, evalInfo[1]);
         BestMove bestMoveResponse = null;
         for (Move move : moves) {
             int[] newEvalInfo = Engine.evaluateMove(board, evalInfo, move);

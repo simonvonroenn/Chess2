@@ -54,7 +54,7 @@ public class Chess2 extends PApplet {
         fill(0);
         textSize(24);
         textAlign(LEFT);
-        text("Evaluation: " + Chessboard.evaluation, BOARD_SIZE + 50, 50);
+        text("Evaluation: " + Chessboard.evaluation / 100, BOARD_SIZE + 50, 50);
 
     }
 

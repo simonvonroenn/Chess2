@@ -162,7 +162,7 @@ public class Engine {
         }
         // sort in descending order
         moves.sort((m1, m2) -> Integer.compare(evaluationCache.get(m2), evaluationCache.get(m1)));
-        System.out.println("MoveOrder: " + moves);
+        //System.out.println("MoveOrder: " + moves);
     }
 
     private static int guessMoveScore(char[][] board, Move move, int pieceValueSum) {
@@ -182,7 +182,7 @@ public class Engine {
             // if square is not attacked, dont substract movePieceAbsVal
             score += 2 * capturePieceAbsVal - movePieceAbsVal;
         }
-        System.out.println(move + " scored " + score);
+        //System.out.println(move + " scored " + score);
         return score;
     }
 }

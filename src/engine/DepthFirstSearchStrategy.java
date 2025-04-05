@@ -10,6 +10,7 @@ import java.util.List;
 public class DepthFirstSearchStrategy {
     // Max depth for DFS
     public static final int MAX_DEPTH = 4;
+    public static int _debug_positionsAnalyzed;
 
     /**
      * Performs iterative deepening search up to a maximum depth within the given time limit.
@@ -19,6 +20,7 @@ public class DepthFirstSearchStrategy {
      * @return the best move found so far
      */
     public static BestMove iterativeDeepeningSearch(char[][] board, boolean whiteToMove) {
+        _debug_positionsAnalyzed = 0;
         long startTime = System.currentTimeMillis();
         BestMove bestMove = null;
         int[] evalInfo = Engine.evaluatePosition(board);
@@ -33,6 +35,7 @@ public class DepthFirstSearchStrategy {
         }
         System.out.printf("Calculated for %d milliseconds.\n", System.currentTimeMillis() - startTime);
         System.out.printf("Bestmoves: %s\n", bestMove.moveSequence);
+        System.out.printf("%d positions analyzed\n", _debug_positionsAnalyzed);
         return bestMove;
     }
 
@@ -57,18 +60,20 @@ public class DepthFirstSearchStrategy {
          */
         // At depth 0, return board evaluation.
         if (depth == 0) {
+            _debug_positionsAnalyzed++;
             return new BestMove(null, evalInfo[0], Collections.emptyList());
         }
         // Generate legal moves for current player
         List<Move> moves = Engine.generateAllLegalMoves(board, whiteToMove);
         if (moves.isEmpty()) {
+            _debug_positionsAnalyzed++;
             // Terminal state: if checkmate, return loss, else draw.
             if (LegalMoveGenerator.isCheckmate(board, whiteToMove)) {
                 return new BestMove(null, whiteToMove ? Integer.MIN_VALUE : Integer.MAX_VALUE, Collections.emptyList());
             }
             return new BestMove(null, 0, Collections.emptyList());
         }
-        Engine.orderMoves(board, moves, evalInfo[1]);
+        if (depth == MAX_DEPTH) Engine.orderMoves(board, moves, evalInfo[1]);
         BestMove bestMoveResponse = null;
         for (Move move : moves) {
             int[] newEvalInfo = Engine.evaluateMove(board, evalInfo, move);

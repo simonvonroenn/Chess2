@@ -5,6 +5,7 @@ import chessboard.LegalMoveGenerator;
 import chessboard.Move;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -154,28 +155,29 @@ public class Engine {
         return allMoves;
     }
 
-    protected static void orderMoves(char[][] board, List<Move> moves) {
+    protected static void orderMoves(char[][] board, List<Move> moves, int pieceValueSum) {
         Map<Move, Integer> evaluationCache = new HashMap<>();
         for (Move move : moves) {
-            evaluationCache.put(move, guessMoveScore(board, move));
+            evaluationCache.put(move, guessMoveScore(board, move, pieceValueSum));
         }
         // sort in descending order
         moves.sort((m1, m2) -> Integer.compare(evaluationCache.get(m2), evaluationCache.get(m1)));
     }
 
-    private static int guessMoveScore(char[][] board, Move move) {
-        int score = 0;
+    private static int guessMoveScore(char[][] board, Move move, int pieceValueSum) {
         char pieceToMove = board[move.fromRow][move.fromCol];
+        int score = PieceValues.getPieceTableValue(pieceToMove, move.toRow, move.toCol, pieceValueSum)
+                    - PieceValues.getPieceTableValue(pieceToMove, move.fromRow, move.fromCol, pieceValueSum);
         int movePieceVal = PieceValues.getPieceValue(pieceToMove);
 
         if (move.isCheck) {
-            score += 10 * movePieceVal;
+            score += 2 * movePieceVal;
         }
 
         if (move.isCapture) {
             char pieceToCapture = board[move.toRow][move.toCol];
             int capturePieceVal = PieceValues.getPieceValue(pieceToCapture);
-            score += 10 * capturePieceVal - movePieceVal;
+            score += 2 * capturePieceVal - movePieceVal;
         }
 
         return score;

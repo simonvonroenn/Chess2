@@ -68,8 +68,7 @@ public class DepthFirstSearchStrategy {
             }
             return new BestMove(null, 0, Collections.emptyList());
         }
-        //TODO: improve speed
-        // Engine.orderMoves(board, moves);
+        Engine.orderMoves(board, moves, evalInfo[1]);
         BestMove bestMoveResponse = null;
         for (Move move : moves) {
             int[] newEvalInfo = Engine.evaluateMove(board, evalInfo, move);

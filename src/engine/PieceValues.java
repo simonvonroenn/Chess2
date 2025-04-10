@@ -9,6 +9,8 @@ public class PieceValues {
     public static final int QUEEN = 900;
     public static final int KING = 20000;
 
+    public static final int OOO_ROOK_DELTA = 5; // better rook position when O-O-O
+
     public static final int MAX_PIECE_VALUE_SUM = 2 * QUEEN + 4 * BISHOP + 4 * KNIGHT + 4 * ROOK + 16 * PAWN;
 
     public static final int[] PAWN_TABLE = {

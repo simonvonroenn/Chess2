@@ -7,14 +7,6 @@ import java.util.Collections;
 import java.util.List;
 
 public class LegalMoveGenerator {
-    // Castling rights management
-    public static boolean whiteKingSideCastling = true;
-    public static boolean whiteQueenSideCastling = true;
-    public static boolean blackKingSideCastling = true;
-    public static boolean blackQueenSideCastling = true;
-
-    // En passant target square: null if none, else [row, col]
-    public static int[] enPassantTarget = null;
 
     /**
      * Generates legal moves for a given piece in a position.
@@ -36,11 +28,11 @@ public class LegalMoveGenerator {
 
         switch (Character.toLowerCase(piece)) {
             case 'p' -> generatePawnMoves(board, row, col, pseudoMoves, whiteToMove);
-            case 'r' -> generateRookMoves(board, row, col, pseudoMoves);
-            case 'n' -> generateKnightMoves(board, row, col, pseudoMoves);
-            case 'b' -> generateBishopMoves(board, row, col, pseudoMoves);
-            case 'q' -> generateQueenMoves(board, row, col, pseudoMoves);
-            case 'k' -> generateKingMoves(board, row, col, pseudoMoves);
+            case 'r' -> generateRookMoves(board, row, col, pseudoMoves, whiteToMove);
+            case 'n' -> generateKnightMoves(board, row, col, pseudoMoves, whiteToMove);
+            case 'b' -> generateBishopMoves(board, row, col, pseudoMoves, whiteToMove);
+            case 'q' -> generateQueenMoves(board, row, col, pseudoMoves, whiteToMove);
+            case 'k' -> generateKingMoves(board, row, col, pseudoMoves, whiteToMove);
         }
         // Filter out moves that leave the king in check
         List<Move> legalMoves = new ArrayList<>();
@@ -64,10 +56,22 @@ public class LegalMoveGenerator {
 
         // Move
         if (isNotOutOfBoard(newRow, col) && isEmpty(board, newRow, col)) {
-            moves.add(new Move(row, col, newRow, col, false));
+            if (newRow == 0 || newRow == 7) {
+                Move promoteQueen = new Move(whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
+                promoteQueen.setPromotionPiece(whiteToMove ? 'Q' : 'q');
+                Move promoteKnight = new Move(whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
+                promoteKnight.setPromotionPiece(whiteToMove ? 'N' : 'n');
+                Move promoteRook = new Move(whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
+                promoteRook.setPromotionPiece(whiteToMove ? 'R' : 'r');
+                Move promoteBishop = new Move(whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
+                promoteBishop.setPromotionPiece(whiteToMove ? 'B' : 'b');
+                moves.addAll(List.of(promoteQueen, promoteKnight, promoteRook, promoteBishop));
+            } else {
+                moves.add(new Move(whiteToMove ? 'P' : 'p', row, col, newRow, col, false));
+            }
             // Move two fields on first move
             if (row == startRow && isEmpty(board, newRow + direction, col)) {
-                moves.add(new Move(row, col, newRow + direction, col, false));
+                moves.add(new Move(whiteToMove ? 'P' : 'p', row, col, newRow + direction, col, false));
             }
         }
 
@@ -75,108 +79,120 @@ public class LegalMoveGenerator {
         for (int side = -1; side <= 1; side += 2) {
             int newCol = col + side;
             if (isNotOutOfBoard(newRow, newCol) && isNotOwnPiece(board, row, col, newRow, newCol)) {
-                moves.add(new Move(row, col, newRow, newCol, true));
+                if (newRow == 0 || newRow == 7) {
+                    Move promoteQueen = new Move(whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
+                    promoteQueen.setPromotionPiece('Q');
+                    Move promoteKnight = new Move(whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
+                    promoteKnight.setPromotionPiece('N');
+                    Move promoteRook = new Move(whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
+                    promoteRook.setPromotionPiece('R');
+                    Move promoteBishop = new Move(whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
+                    promoteBishop.setPromotionPiece('B');
+                    moves.addAll(List.of(promoteQueen, promoteKnight, promoteRook, promoteBishop));
+                } else {
+                    moves.add(new Move(whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true));
+                }
             }
         }
 
         // En Passant
-        if (enPassantTarget != null) {
-            int epRow = enPassantTarget[0];
-            int epCol = enPassantTarget[1];
+        if (Chessboard.enPassantTarget != null) {
+            int epRow = Chessboard.enPassantTarget[0];
+            int epCol = Chessboard.enPassantTarget[1];
             if (newRow == epRow && Math.abs(col - epCol) == 1) {
                 // Check that there is an enemy pawn in the correct position
                 int capturedPawnRow = whiteToMove ? newRow + 1 : newRow - 1;
                 if (isNotOutOfBoard(capturedPawnRow, epCol) && Character.toLowerCase(board[capturedPawnRow][epCol]) == 'p') {
-                    moves.add(new Move(row, col, newRow, epCol, true));
+                    moves.add(new Move(whiteToMove ? 'P' : 'p', row, col, newRow, epCol, true));
                 }
             }
         }
     }
 
-    private static void generateRookMoves(char[][] board, int row, int col, List<Move> moves) {
-        generateSlidingMoves(board, row, col, moves, new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}});
+    private static void generateRookMoves(char[][] board, int row, int col, List<Move> moves, boolean whiteToMove) {
+        generateSlidingMoves(board, row, col, moves, new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}, whiteToMove ? 'R' : 'r');
     }
 
-    private static void generateBishopMoves(char[][] board, int row, int col, List<Move> moves) {
-        generateSlidingMoves(board, row, col, moves, new int[][]{{1, 1}, {-1, -1}, {1, -1}, {-1, 1}});
+    private static void generateBishopMoves(char[][] board, int row, int col, List<Move> moves, boolean whiteToMove) {
+        generateSlidingMoves(board, row, col, moves, new int[][]{{1, 1}, {-1, -1}, {1, -1}, {-1, 1}}, whiteToMove ? 'B' : 'b');
     }
 
-    private static void generateQueenMoves(char[][] board, int row, int col, List<Move> moves) {
-        generateSlidingMoves(board, row, col, moves, new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, -1}, {1, -1}, {-1, 1}});
+    private static void generateQueenMoves(char[][] board, int row, int col, List<Move> moves, boolean whiteToMove) {
+        generateSlidingMoves(board, row, col, moves, new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, -1}, {1, -1}, {-1, 1}}, whiteToMove ? 'Q' : 'q');
     }
 
-    private static void generateKnightMoves(char[][] board, int row, int col, List<Move> moves) {
+    private static void generateKnightMoves(char[][] board, int row, int col, List<Move> moves, boolean whiteToMove) {
         int[][] knightMoves = {{-2, -1}, {-2, 1}, {2, -1}, {2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}};
         for (int[] move : knightMoves) {
             int newRow = row + move[0];
             int newCol = col + move[1];
             if (isValid(board, row, col, newRow, newCol)) {
                 boolean capture = !isEmpty(board, newRow, newCol);
-                moves.add(new Move(row, col, newRow, newCol, capture));
+                moves.add(new Move(whiteToMove ? 'N' : 'n', row, col, newRow, newCol, capture));
             }
         }
     }
 
-    private static void generateKingMoves(char[][] board, int row, int col, List<Move> moves) {
+    private static void generateKingMoves(char[][] board, int row, int col, List<Move> moves, boolean whiteToMove) {
         int[][] kingMoves = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
         for (int[] move : kingMoves) {
             int newRow = row + move[0];
             int newCol = col + move[1];
             if (isValid(board, row, col, newRow, newCol)) {
                 boolean capture = !isEmpty(board, newRow, newCol);
-                moves.add(new Move(row, col, newRow, newCol, capture));
+                moves.add(new Move(whiteToMove ? 'K' : 'k', row, col, newRow, newCol, capture));
             }
         }
         // Castling moves
         // Only add castling moves if king is in its original position and not in check
         if (board[row][col] == 'K' && row == 7 && col == 4) {
             // White kingside castling
-            if (whiteKingSideCastling &&
+            if (Chessboard.whiteKingSideCastling &&
                     isEmpty(board, 7, 5) && isEmpty(board, 7, 6) &&
                     !isSquareAttacked(board, 7, 4, false) &&
                     !isSquareAttacked(board, 7, 5, false) &&
                     !isSquareAttacked(board, 7, 6, false)) {
-                moves.add(new Move(row, col, 7, 6, false));
+                moves.add(new Move(whiteToMove ? 'K' : 'k', row, col, 7, 6, false));
             }
             // White queenside castling
-            if (whiteQueenSideCastling &&
+            if (Chessboard.whiteQueenSideCastling &&
                     isEmpty(board, 7, 1) && isEmpty(board, 7, 2) && isEmpty(board, 7, 3) &&
                     !isSquareAttacked(board, 7, 4, false) &&
                     !isSquareAttacked(board, 7, 3, false) &&
                     !isSquareAttacked(board, 7, 2, false)) {
-                moves.add(new Move(row, col, 7, 2, false));
+                moves.add(new Move(whiteToMove ? 'K' : 'k', row, col, 7, 2, false));
             }
         } else if (board[row][col] == 'k' && row == 0 && col == 4) {
             // Black kingside castling
-            if (blackKingSideCastling &&
+            if (Chessboard.blackKingSideCastling &&
                     isEmpty(board, 0, 5) && isEmpty(board, 0, 6) &&
                     !isSquareAttacked(board, 0, 4, true) &&
                     !isSquareAttacked(board, 0, 5, true) &&
                     !isSquareAttacked(board, 0, 6, true)) {
-                moves.add(new Move(row, col, 0, 6, false));
+                moves.add(new Move(whiteToMove ? 'K' : 'k', row, col, 0, 6, false));
             }
             // Black queenside castling
-            if (blackQueenSideCastling &&
+            if (Chessboard.blackQueenSideCastling &&
                     isEmpty(board, 0, 1) && isEmpty(board, 0, 2) && isEmpty(board, 0, 3) &&
                     !isSquareAttacked(board, 0, 4, true) &&
                     !isSquareAttacked(board, 0, 3, true) &&
                     !isSquareAttacked(board, 0, 2, true)) {
-                moves.add(new Move(row, col, 0, 2, false));
+                moves.add(new Move(whiteToMove ? 'K' : 'k', row, col, 0, 2, false));
             }
         }
     }
 
-    private static void generateSlidingMoves(char[][] board, int row, int col, List<Move> moves, int[][] directions) {
+    private static void generateSlidingMoves(char[][] board, int row, int col, List<Move> moves, int[][] directions, char piece) {
         for (int[] dir : directions) {
             int newRow = row + dir[0];
             int newCol = col + dir[1];
             while (isNotOutOfBoard(newRow, newCol) && isEmpty(board, newRow, newCol)) {
-                moves.add(new Move(row, col, newRow, newCol, false));
+                moves.add(new Move(piece, row, col, newRow, newCol, false));
                 newRow += dir[0];
                 newCol += dir[1];
             }
             if (isValid(board, row, col, newRow, newCol)) {
-                moves.add(new Move(row, col, newRow, newCol, true));
+                moves.add(new Move(piece, row, col, newRow, newCol, true));
             }
         }
     }
@@ -198,67 +214,6 @@ public class LegalMoveGenerator {
     }
 
     /**
-     * Update castling rights and en passant target based on the move performed.
-     *
-     * @param board the current chess position
-     * @param fromRow move from row
-     * @param fromCol move from col
-     * @param toRow move to row
-     * @param toCol move to col
-     * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
-     */
-    public static void updateRightsAndEnPassant(char[][] board, int fromRow, int fromCol, int toRow, int toCol, char capturedPiece) {
-        char movingPiece = board[toRow][toCol];
-        // For kings: remove castling rights if moved
-        if (movingPiece == 'K') {
-            whiteKingSideCastling = false;
-            whiteQueenSideCastling = false;
-        } else if (movingPiece == 'k') {
-            blackKingSideCastling = false;
-            blackQueenSideCastling = false;
-        }
-        // For rooks: if rook moved, remove corresponding rights
-        if (movingPiece == 'R') {
-            if (fromRow == 7 && fromCol == 0) {
-                whiteQueenSideCastling = false;
-            }
-            if (fromRow == 7 && fromCol == 7) {
-                whiteKingSideCastling = false;
-            }
-        } else if (movingPiece == 'r') {
-            if (fromRow == 0 && fromCol == 0) {
-                blackQueenSideCastling = false;
-            }
-            if (fromRow == 0 && fromCol == 7) {
-                blackKingSideCastling = false;
-            }
-        }
-        // If a rook is captured from its original square, update castling rights
-        if (capturedPiece == 'R') {
-            if (toRow == 7 && toCol == 0) {
-                whiteQueenSideCastling = false;
-            }
-            if (toRow == 7 && toCol == 7) {
-                whiteKingSideCastling = false;
-            }
-        } else if (capturedPiece == 'r') {
-            if (toRow == 0 && toCol == 0) {
-                blackQueenSideCastling = false;
-            }
-            if (toRow == 0 && toCol == 7) {
-                blackKingSideCastling = false;
-            }
-        }
-        // En passant: if pawn moved two squares forward, set en passant target, else clear.
-        if (Character.toLowerCase(movingPiece) == 'p' && Math.abs(toRow - fromRow) == 2) {
-            int epRow = (fromRow + toRow) / 2;
-            enPassantTarget = new int[]{epRow, fromCol};
-        } else {
-            enPassantTarget = null;
-        }
-    }
-
-    /**
      * Applies a move to a copy of the board and returns this copy.
      *
      * @param board the current position
@@ -270,10 +225,9 @@ public class LegalMoveGenerator {
         long startTime = System.currentTimeMillis();
         //char[][] boardCopy = copyBoard(board);
         char pieceCaptured = board[move.toRow][move.toCol];
-        char movingPiece = board[move.fromRow][move.fromCol];
-        if (Character.toLowerCase(movingPiece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
+        if (Character.toLowerCase(move.piece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
             // Simulate castling
-            board[move.toRow][move.toCol] = movingPiece;
+            board[move.toRow][move.toCol] = move.piece;
             board[move.fromRow][move.fromCol] = '\0';
             if (move.toCol > move.fromCol) { // kingside
                 board[move.toRow][move.toCol - 1] = board[move.toRow][7];
@@ -282,17 +236,20 @@ public class LegalMoveGenerator {
                 board[move.toRow][move.toCol + 1] = board[move.toRow][0];
                 board[move.toRow][0] = '\0';
             }
-        } else if (Character.toLowerCase(movingPiece) == 'p' && move.fromCol != move.toCol && board[move.toRow][move.toCol] == '\0') {
+        } else if (Character.toLowerCase(move.piece) == 'p' && move.fromCol != move.toCol && board[move.toRow][move.toCol] == '\0') {
             // Simulate en passant capture
-            board[move.toRow][move.toCol] = movingPiece;
+            board[move.toRow][move.toCol] = move.piece;
             board[move.fromRow][move.fromCol] = '\0';
             int capturedPawnRow = whiteToMove ? move.toRow + 1 : move.toRow - 1;
             pieceCaptured = board[capturedPawnRow][move.toCol];
             board[capturedPawnRow][move.toCol] = '\0';
         } else {
             // Normal move
-            board[move.toRow][move.toCol] = movingPiece;
+            board[move.toRow][move.toCol] = move.piece;
             board[move.fromRow][move.fromCol] = '\0';
+        }
+        if ((move.piece == 'P' && move.toRow == 0) || (move.piece == 'p' && move.toRow == 7)) {
+            board[move.toRow][move.toCol] = move.promotionPiece;
         }
         Engine._debugTime_ApplyMove += System.currentTimeMillis() - startTime;
         return pieceCaptured;
@@ -300,10 +257,9 @@ public class LegalMoveGenerator {
 
     public static void undoMove(char[][] board, Move move, boolean whiteToMove, char pieceCaptured) {
         long startTime = System.currentTimeMillis();
-        char movingPiece = board[move.toRow][move.toCol];
-        if (Character.toLowerCase(movingPiece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
+        if (Character.toLowerCase(move.piece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
             // Simulate castling
-            board[move.fromRow][move.fromCol] = movingPiece;
+            board[move.fromRow][move.fromCol] = move.piece;
             board[move.toRow][move.toCol] = '\0';
             if (move.toCol > move.fromCol) { // kingside
                 board[move.toRow][7] = board[move.toRow][move.toCol - 1];
@@ -312,16 +268,18 @@ public class LegalMoveGenerator {
                 board[move.toRow][0] = board[move.toRow][move.toCol + 1];
                 board[move.toRow][move.toCol + 1] = '\0';
             }
-        } else if (Character.toLowerCase(movingPiece) == 'p' && move.fromCol != move.toCol
-                    && enPassantTarget != null && move.toRow == enPassantTarget[0] && move.toCol == enPassantTarget[1]) {
+        } else if (Character.toLowerCase(move.piece) == 'p' && move.fromCol != move.toCol
+                    && Chessboard.enPassantTarget != null
+                    && move.toRow == Chessboard.enPassantTarget[0]
+                    && move.toCol == Chessboard.enPassantTarget[1]) {
             // Simulate en passant capture
-            board[move.fromRow][move.fromCol] = movingPiece;
+            board[move.fromRow][move.fromCol] = move.piece;
             board[move.toRow][move.toCol] = '\0';
             int capturedPawnRow = whiteToMove ? move.toRow + 1 : move.toRow - 1;
             board[capturedPawnRow][move.toCol] = whiteToMove ? 'p' : 'P';
         } else {
             // Normal move
-            board[move.fromRow][move.fromCol] = movingPiece;
+            board[move.fromRow][move.fromCol] = move.piece;
             board[move.toRow][move.toCol] = pieceCaptured;
         }
         Engine._debugTime_ApplyMove += System.currentTimeMillis() - startTime;

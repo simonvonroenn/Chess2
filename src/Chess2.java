@@ -6,8 +6,7 @@ public class Chess2 extends PApplet {
 
     /** The starting position. */
     public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    //public static final String FEN = "rnbqk2r/pp1pbppp/4pn2/6B1/8/2N2N2/PPP1QPPP/R3KB1R w KQkq - 2 8";
-
+    //public static final String FEN = "r1bqk2r/p5pp/2p2n2/3pp3/1b6/2N1P3/PP2BPPP/R1BQK2R w KQkq - 2 11";
     /** Set to true if the user wants to play white; Set to false if the user wants to play black */
     public static final boolean playWhite = true;
 
@@ -16,8 +15,8 @@ public class Chess2 extends PApplet {
     public static final int BOARD_SIZE = 800;
     public static final int TILE_SIZE = BOARD_SIZE / 8;
     public static boolean isGameOver = false;
-    private final Chessboard board = new Chessboard(this, TILE_SIZE, FEN);
-    private final Engine bot = new Engine();
+    private final Chessboard board = new Chessboard(this, TILE_SIZE);
+    private final Engine engine = new Engine();
 
     /**
      * Initializes the board.
@@ -33,12 +32,12 @@ public class Chess2 extends PApplet {
      */
     public void setup() {
         frameRate(60);
-        board.loadPosition();
+        board.loadPosition(FEN);
         board.loadImages();
-        // Make first move if the bot plays white
-        if (!playWhite) {
+        // Make first move if its the engines turn at the beginning
+        if (Chessboard.whiteToMove != playWhite) {
             new Thread(() -> {
-                board.movePieceForBot(bot);
+                board.movePieceForEngine(engine);
                 board.changePlayer();
             }).start();
         }
@@ -68,10 +67,10 @@ public class Chess2 extends PApplet {
         if (!isGameOver) {
             if (mouseX < BOARD_SIZE && mouseY < BOARD_SIZE && mouseButton == LEFT) {
                 if (board.isLegalMove(row, col)) {
-                    isGameOver = board.movePiece(row, col);
+                    isGameOver = board.movePieceForPlayer(row, col);
                     if (!isGameOver && board.changePlayer() != playWhite) {
                         new Thread(() -> {
-                            isGameOver = board.movePieceForBot(bot);
+                            isGameOver = board.movePieceForEngine(engine);
                             if (!isGameOver) board.changePlayer();
                         }).start();
                     }

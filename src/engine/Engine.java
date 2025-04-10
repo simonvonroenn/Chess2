@@ -67,16 +67,44 @@ public class Engine {
         long startTime = System.currentTimeMillis();
         int capturedPieceValue = 0;
         int newPieceValueSum = evalInfo[1];
+
         if (move.isCapture) {
-            char capturedPiece = board[move.toRow][move.toCol];
+            char capturedPiece;
+            // En passant
+            if (Character.toLowerCase(move.piece) == 'p' && move.fromCol != move.toCol && board[move.toRow][move.toCol] == '\0') {
+                capturedPiece = (move.piece == 'P' ? board[move.toRow + 1][move.toCol] : board[move.toRow - 1][move.toCol]);
+            } else {
+                capturedPiece = board[move.toRow][move.toCol];
+            }
             capturedPieceValue = PieceValues.getPieceValue(capturedPiece) + PieceValues.getPieceTableValue(capturedPiece, move.toRow, move.toCol, evalInfo[1] );
             newPieceValueSum -= Math.abs(PieceValues.getPieceValue(capturedPiece));
         }
-        char movedPiece = board[move.fromRow][move.fromCol];
-        int movePieceTableValueBefore = PieceValues.getPieceTableValue(movedPiece, move.fromRow, move.fromCol, evalInfo[1]);
-        int movePieceTableValueAfter = PieceValues.getPieceTableValue(movedPiece, move.toRow, move.toCol, newPieceValueSum);
-        int evalDelta = -capturedPieceValue + movePieceTableValueAfter - movePieceTableValueBefore;
+
+        int movePieceTableValueBefore = PieceValues.getPieceTableValue(move.piece, move.fromRow, move.fromCol, evalInfo[1]);
+        int movePieceTableValueAfter = PieceValues.getPieceTableValue(move.piece, move.toRow, move.toCol, newPieceValueSum);
+
+        // Castling
+        int castlingRookTableValueDelta = 0;
+        if (Character.toLowerCase(move.piece) == 'k' && move.toCol - move.fromCol == -2) { // better rook position when O-O-O
+            castlingRookTableValueDelta = Character.isUpperCase(move.piece) ? PieceValues.OOO_ROOK_DELTA : -PieceValues.OOO_ROOK_DELTA;
+        }
+
+        // Promotion
+        int promotionPieceValue = 0;
+        int promotionPieceTableValue = 0;
+        if (move.promotionPiece != '\0') {
+            promotionPieceValue = PieceValues.getPieceValue(move.promotionPiece) - PieceValues.getPieceValue(move.piece);
+            promotionPieceTableValue = PieceValues.getPieceTableValue(move.promotionPiece, move.toRow, move.toCol, evalInfo[1]);
+            movePieceTableValueAfter = 0;
+            newPieceValueSum += Math.abs(promotionPieceValue);
+        }
+
+        int evalDelta = -capturedPieceValue + movePieceTableValueAfter - movePieceTableValueBefore
+                        + castlingRookTableValueDelta // if castling
+                        + promotionPieceValue + promotionPieceTableValue; // if promotion
+
         _debugTime_EvaluatePosition += System.currentTimeMillis() - startTime;
+
         return new int[]{evalInfo[0] + evalDelta, newPieceValueSum};
     }
 

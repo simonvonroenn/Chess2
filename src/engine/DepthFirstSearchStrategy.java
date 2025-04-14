@@ -1,5 +1,6 @@
 package engine;
 
+import chessboard.BoardEnv;
 import chessboard.LegalMoveGenerator;
 import chessboard.Move;
 import engine.Engine.BestMove;
@@ -16,16 +17,14 @@ public class DepthFirstSearchStrategy {
      * Performs iterative deepening search up to a maximum depth within the given time limit.
      *
      * @param board the current board state
-     * @param whiteToMove true if white is to move
      * @return the best move found so far
      */
-    public static BestMove iterativeDeepeningSearch(char[][] board, boolean whiteToMove) {
+    public static BestMove iterativeDeepeningSearch(BoardEnv board) {
         _debug_positionsAnalyzed = 0;
         long startTime = System.currentTimeMillis();
         BestMove bestMove = null;
-        int[] evalInfo = Engine.evaluatePosition(board);
         for (int depth = 4; depth <= MAX_DEPTH; depth++) {
-            bestMove = depthLimitedDFS(board, evalInfo, whiteToMove, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, startTime);
+            bestMove = depthLimitedDFS(board, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, startTime);
             /*
             if (System.currentTimeMillis() - startTime >= Engine.TIME_LIMIT) {
                 System.out.println("Reached depth: " + depth);
@@ -45,12 +44,11 @@ public class DepthFirstSearchStrategy {
      * the negative value of the opponent's best response.
      *
      * @param board the current board state
-     * @param whiteToMove true if it is white's turn
      * @param depth the current depth limit
      * @param startTime the start time of the search
      * @return a BestMove object containing the best move and its evaluation
      */
-    private static BestMove depthLimitedDFS(char[][] board, int[] evalInfo, boolean whiteToMove, int depth, int alpha, int beta, long startTime) {
+    private static BestMove depthLimitedDFS(BoardEnv board, int depth, int alpha, int beta, long startTime) {
         // Terminate search if time limit reached
         //TODO: engine makes weird moves with time limit
         /*
@@ -61,31 +59,39 @@ public class DepthFirstSearchStrategy {
         // At depth 0, return board evaluation.
         if (depth == 0) {
             _debug_positionsAnalyzed++;
-            return new BestMove(null, evalInfo[0], Collections.emptyList());
+            return new BestMove(null, board.evaluation, Collections.emptyList());
         }
         // Generate legal moves for current player
-        List<Move> moves = Engine.generateAllLegalMoves(board, whiteToMove);
+        List<Move> moves = Engine.generateAllLegalMoves(board);
         if (moves.isEmpty()) {
             _debug_positionsAnalyzed++;
             // Terminal state: if checkmate, return loss, else draw.
-            if (LegalMoveGenerator.isCheckmate(board, whiteToMove)) {
-                return new BestMove(null, whiteToMove ? Integer.MIN_VALUE : Integer.MAX_VALUE, Collections.emptyList());
+            if (LegalMoveGenerator.isCheckmate(board)) {
+                return new BestMove(null, board.whiteToMove ? Integer.MIN_VALUE : Integer.MAX_VALUE, Collections.emptyList());
             }
             return new BestMove(null, 0, Collections.emptyList());
         }
-        Engine.orderMoves(board, moves, evalInfo[1]);
+        Engine.orderMoves(board, moves);
         BestMove bestMoveResponse = null;
+        int originalEvaluation = board.evaluation;
+        int originalPieceValueSum = board.pieceValueSum;
         for (Move move : moves) {
-            int[] newEvalInfo = Engine.evaluateMove(board, evalInfo, move);
-            char pieceCaptured = LegalMoveGenerator.applyMove(board, move, whiteToMove);
+            int[] evalInfo = Engine.evaluateMove(board, move);
+            board.evaluation = evalInfo[0];
+            board.pieceValueSum = evalInfo[1];
+            char pieceCaptured = LegalMoveGenerator.applyMove(board, move);
+            board.whiteToMove = !board.whiteToMove;
             BestMove response;
             if (depth == 1 && (move.isCapture || move.isCheck)) {
-                response = depthLimitedDFS(board, newEvalInfo, !whiteToMove, depth, alpha, beta, startTime);
+                response = depthLimitedDFS(board, depth, alpha, beta, startTime);
             } else {
-                response = depthLimitedDFS(board, newEvalInfo, !whiteToMove, depth - 1, alpha, beta, startTime);
+                response = depthLimitedDFS(board,depth - 1, alpha, beta, startTime);
             }
-            LegalMoveGenerator.undoMove(board, move, whiteToMove, pieceCaptured);
-            if (whiteToMove) {
+            board.whiteToMove = !board.whiteToMove;
+            LegalMoveGenerator.undoMove(board, move, pieceCaptured);
+            board.evaluation = originalEvaluation;
+            board.pieceValueSum = originalPieceValueSum;
+            if (board.whiteToMove) {
                 if (bestMoveResponse == null ||  response.evaluation > bestMoveResponse.evaluation) {
                     bestMoveResponse = new BestMove(move, response.evaluation, response.moveSequence);
                 }

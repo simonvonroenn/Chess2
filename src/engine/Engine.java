@@ -1,11 +1,10 @@
 package engine;
 
-import chessboard.Chessboard;
+import chessboard.BoardEnv;
 import chessboard.LegalMoveGenerator;
 import chessboard.Move;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,13 +21,15 @@ public class Engine {
      * the time limit.
      *
      * @param board the current chess board state
-     * @param whiteToMove true if white is to move, false otherwise
      * @return the best move found, or null if no move is available
      */
-    public BestMove calculateBestMove(char[][] board, boolean whiteToMove) {
+    public BestMove calculateBestMove(BoardEnv board) {
         _debugTime_ApplyMove = 0;
-        char[][] boardCopy = LegalMoveGenerator.copyBoard(board);
-        BestMove bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(boardCopy, whiteToMove);
+        BoardEnv boardCopy = board.deepCopy();
+        int[] evalInfo = Engine.evaluatePosition(boardCopy);
+        boardCopy.evaluation = evalInfo[0];
+        boardCopy.pieceValueSum = evalInfo[1];
+        BestMove bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(boardCopy);
         System.out.printf("Calculation parts: generate all legal moves: %dms, " +
                         "evaluate Position: %dms," +
                         "applyMove: %dms\n",
@@ -59,28 +60,26 @@ public class Engine {
      * Applies on a given board evaluation the eval delta given a certain move.
      *
      * @param board the board state
-     * @param evalInfo the evaluation of the board state before the move and the current sum of all piece values
      * @param move the move
-     * @return the evaluation of the board state after the move and the new pieceValueSum
      */
-    public static int[] evaluateMove(char[][] board, int[] evalInfo, Move move) {
+    public static int[] evaluateMove(BoardEnv board, Move move) {
         long startTime = System.currentTimeMillis();
         int capturedPieceValue = 0;
-        int newPieceValueSum = evalInfo[1];
+        int newPieceValueSum = board.pieceValueSum;
 
         if (move.isCapture) {
             char capturedPiece;
             // En passant
-            if (Character.toLowerCase(move.piece) == 'p' && move.fromCol != move.toCol && board[move.toRow][move.toCol] == '\0') {
-                capturedPiece = (move.piece == 'P' ? board[move.toRow + 1][move.toCol] : board[move.toRow - 1][move.toCol]);
+            if (Character.toLowerCase(move.piece) == 'p' && move.fromCol != move.toCol && board.state[move.toRow][move.toCol] == '\0') {
+                capturedPiece = (move.piece == 'P' ? board.state[move.toRow + 1][move.toCol] : board.state[move.toRow - 1][move.toCol]);
             } else {
-                capturedPiece = board[move.toRow][move.toCol];
+                capturedPiece = board.state[move.toRow][move.toCol];
             }
-            capturedPieceValue = PieceValues.getPieceValue(capturedPiece) + PieceValues.getPieceTableValue(capturedPiece, move.toRow, move.toCol, evalInfo[1] );
+            capturedPieceValue = PieceValues.getPieceValue(capturedPiece) + PieceValues.getPieceTableValue(capturedPiece, move.toRow, move.toCol, board.pieceValueSum);
             newPieceValueSum -= Math.abs(PieceValues.getPieceValue(capturedPiece));
         }
 
-        int movePieceTableValueBefore = PieceValues.getPieceTableValue(move.piece, move.fromRow, move.fromCol, evalInfo[1]);
+        int movePieceTableValueBefore = PieceValues.getPieceTableValue(move.piece, move.fromRow, move.fromCol, board.pieceValueSum);
         int movePieceTableValueAfter = PieceValues.getPieceTableValue(move.piece, move.toRow, move.toCol, newPieceValueSum);
 
         // Castling
@@ -94,7 +93,7 @@ public class Engine {
         int promotionPieceTableValue = 0;
         if (move.promotionPiece != '\0') {
             promotionPieceValue = PieceValues.getPieceValue(move.promotionPiece) - PieceValues.getPieceValue(move.piece);
-            promotionPieceTableValue = PieceValues.getPieceTableValue(move.promotionPiece, move.toRow, move.toCol, evalInfo[1]);
+            promotionPieceTableValue = PieceValues.getPieceTableValue(move.promotionPiece, move.toRow, move.toCol, board.pieceValueSum);
             movePieceTableValueAfter = 0;
             newPieceValueSum += Math.abs(promotionPieceValue);
         }
@@ -105,7 +104,7 @@ public class Engine {
 
         _debugTime_EvaluatePosition += System.currentTimeMillis() - startTime;
 
-        return new int[]{evalInfo[0] + evalDelta, newPieceValueSum};
+        return new int[]{board.evaluation + evalDelta, newPieceValueSum};
     }
 
     /**
@@ -114,7 +113,7 @@ public class Engine {
      * @param board the current board state
      * @return the evaluation and the sum of all piece values
      */
-    public static int[] evaluatePosition(char[][] board) {
+    public static int[] evaluatePosition(BoardEnv board) {
         int evaluation = 0;
         int pieceValueSum = 0;
         int pieceTotalValue;
@@ -122,7 +121,7 @@ public class Engine {
         int[] blackKingPos = new int[0];
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
-                char piece = board[row][col];
+                char piece = board.state[row][col];
                 int pieceValue = PieceValues.getPieceValue(piece);
                 int pieceTableValue = Character.toLowerCase(piece) != 'k' ? PieceValues.getPieceTableValue(piece, row, col, 0) : 0;
                 if (piece == 'K') {
@@ -133,49 +132,34 @@ public class Engine {
                     pieceValueSum += Math.abs(pieceValue);
                     pieceTotalValue = pieceValue + pieceTableValue;
                     evaluation += pieceTotalValue;
-                    Chessboard._debug_pieceValues[row][col] = Math.abs(pieceTotalValue);
+                    BoardEnv._debug_pieceValues[row][col] = Math.abs(pieceTotalValue);
                 }
             }
         }
         pieceTotalValue = PieceValues.KING + PieceValues.getPieceTableValue('K', whiteKingPos[0], whiteKingPos[1], pieceValueSum);
         evaluation += pieceTotalValue;
-        Chessboard._debug_pieceValues[whiteKingPos[0]][whiteKingPos[1]] = Math.abs(pieceTotalValue);
+        BoardEnv._debug_pieceValues[whiteKingPos[0]][whiteKingPos[1]] = Math.abs(pieceTotalValue);
         pieceTotalValue = -PieceValues.KING + PieceValues.getPieceTableValue('k', blackKingPos[0], blackKingPos[1], pieceValueSum);
         evaluation += pieceTotalValue;
-        Chessboard._debug_pieceValues[blackKingPos[0]][blackKingPos[1]] = Math.abs(pieceTotalValue);
+        BoardEnv._debug_pieceValues[blackKingPos[0]][blackKingPos[1]] = Math.abs(pieceTotalValue);
         return new int[]{evaluation, pieceValueSum};
-    }
-
-    /**
-     * Applies a move to the given board state.
-     * Note: Special moves like castling, en passant, or promotion are not handled.
-     *
-     * @param board the board state to apply the move to
-     * @param move the move to apply
-     */
-    @Deprecated
-    protected static void applyMove(char[][] board, Move move) {
-        char movingPiece = board[move.fromRow][move.fromCol];
-        board[move.toRow][move.toCol] = movingPiece;
-        board[move.fromRow][move.fromCol] = '\0';
     }
 
     /**
      * Generates all legal moves for the current player from the given board state.
      *
      * @param board the current board state
-     * @param whiteToMove true if white is to move
      * @return a list of legal moves
      */
-    protected static List<Move> generateAllLegalMoves(char[][] board, boolean whiteToMove) {
+    protected static List<Move> generateAllLegalMoves(BoardEnv board) {
         long startTime = System.currentTimeMillis();
         List<Move> allMoves = new ArrayList<>();
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
-                char piece = board[row][col];
+                char piece = board.state[row][col];
                 if (piece == '\0') continue;
-                if ((whiteToMove && Character.isUpperCase(piece)) || (!whiteToMove && Character.isLowerCase(piece))) {
-                    allMoves.addAll(LegalMoveGenerator.generateLegalMoves(board, row, col, whiteToMove));
+                if ((board.whiteToMove && Character.isUpperCase(piece)) || (!board.whiteToMove && Character.isLowerCase(piece))) {
+                    allMoves.addAll(LegalMoveGenerator.generateLegalMoves(board, row, col));
                 }
             }
         }
@@ -183,20 +167,20 @@ public class Engine {
         return allMoves;
     }
 
-    protected static void orderMoves(char[][] board, List<Move> moves, int pieceValueSum) {
+    protected static void orderMoves(BoardEnv board, List<Move> moves) {
         Map<Move, Integer> evaluationCache = new HashMap<>();
         for (Move move : moves) {
-            evaluationCache.put(move, guessMoveScore(board, move, pieceValueSum));
+            evaluationCache.put(move, guessMoveScore(board, move));
         }
         // sort in descending order
         moves.sort((m1, m2) -> Integer.compare(evaluationCache.get(m2), evaluationCache.get(m1)));
         //System.out.println("MoveOrder: " + moves);
     }
 
-    private static int guessMoveScore(char[][] board, Move move, int pieceValueSum) {
-        char pieceToMove = board[move.fromRow][move.fromCol];
-        int score = PieceValues.getPieceTableValue(pieceToMove, move.toRow, move.toCol, pieceValueSum)
-                    - PieceValues.getPieceTableValue(pieceToMove, move.fromRow, move.fromCol, pieceValueSum);
+    private static int guessMoveScore(BoardEnv board, Move move) {
+        char pieceToMove = board.state[move.fromRow][move.fromCol];
+        int score = PieceValues.getPieceTableValue(pieceToMove, move.toRow, move.toCol, board.pieceValueSum)
+                    - PieceValues.getPieceTableValue(pieceToMove, move.fromRow, move.fromCol, board.pieceValueSum);
         int movePieceAbsVal = Math.abs(PieceValues.getPieceValue(pieceToMove));
 
         if (move.isCheck) {
@@ -204,7 +188,7 @@ public class Engine {
         }
 
         if (move.isCapture) {
-            char pieceToCapture = board[move.toRow][move.toCol];
+            char pieceToCapture = board.state[move.toRow][move.toCol];
             int capturePieceAbsVal = Math.abs(PieceValues.getPieceValue(pieceToCapture));
             // TODO: Implement when attacked squares are stored
             // if square is not attacked, dont substract movePieceAbsVal

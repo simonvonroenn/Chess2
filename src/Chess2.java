@@ -6,7 +6,7 @@ public class Chess2 extends PApplet {
 
     /** The starting position. */
     public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    //public static final String FEN = "r1bqk2r/p5pp/2p2n2/3pp3/1b6/2N1P3/PP2BPPP/R1BQK2R w KQkq - 2 11";
+    //public static final String FEN = "r1bq1rk1/ppp2p1p/2n1p2p/3pP3/1b1P4/2NB1N1P/PPP2PP1/R2Q1RK1 w - - 0 1";
     /** Set to true if the user wants to play white; Set to false if the user wants to play black */
     public static final boolean playWhite = true;
 
@@ -15,7 +15,7 @@ public class Chess2 extends PApplet {
     public static final int BOARD_SIZE = 800;
     public static final int TILE_SIZE = BOARD_SIZE / 8;
     public static boolean isGameOver = false;
-    private final Chessboard board = new Chessboard(this, TILE_SIZE);
+    private final Chessboard chessboard = new Chessboard(this, TILE_SIZE, FEN);
     private final Engine engine = new Engine();
 
     /**
@@ -32,13 +32,12 @@ public class Chess2 extends PApplet {
      */
     public void setup() {
         frameRate(60);
-        board.loadPosition(FEN);
-        board.loadImages();
+        chessboard.loadImages();
         // Make first move if its the engines turn at the beginning
-        if (Chessboard.whiteToMove != playWhite) {
+        if (chessboard.board.whiteToMove != playWhite) {
             new Thread(() -> {
-                board.movePieceForEngine(engine);
-                board.changePlayer();
+                chessboard.movePieceForEngine(engine);
+                chessboard.changePlayer();
             }).start();
         }
     }
@@ -49,11 +48,11 @@ public class Chess2 extends PApplet {
      */
     public void draw(){
         background(200);
-        board.load();
+        chessboard.load();
         fill(0);
         textSize(24);
         textAlign(LEFT);
-        text("Evaluation: " + Chessboard.evaluation / 100, BOARD_SIZE + 50, 50);
+        text("Evaluation: " + (float) chessboard.board.evaluation / 100, BOARD_SIZE + 50, 50);
 
     }
 
@@ -66,19 +65,19 @@ public class Chess2 extends PApplet {
 
         if (!isGameOver) {
             if (mouseX < BOARD_SIZE && mouseY < BOARD_SIZE && mouseButton == LEFT) {
-                if (board.isLegalMove(row, col)) {
-                    isGameOver = board.movePieceForPlayer(row, col);
-                    if (!isGameOver && board.changePlayer() != playWhite) {
+                if (chessboard.isLegalMove(row, col)) {
+                    isGameOver = chessboard.movePieceForPlayer(row, col);
+                    if (!isGameOver && chessboard.changePlayer() != playWhite) {
                         new Thread(() -> {
-                            isGameOver = board.movePieceForEngine(engine);
-                            if (!isGameOver) board.changePlayer();
+                            isGameOver = chessboard.movePieceForEngine(engine);
+                            if (!isGameOver) chessboard.changePlayer();
                         }).start();
                     }
                 } else {
-                    board.selectPiece(row, col);
+                    chessboard.selectPiece(row, col);
                 }
             } else {
-                board.resetSelection();
+                chessboard.resetSelection();
             }
         }
     }

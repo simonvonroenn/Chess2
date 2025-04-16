@@ -2,8 +2,6 @@ import engine.Engine;
 import chessboard.Chessboard;
 import processing.core.PApplet;
 
-import java.util.List;
-
 public class Chess2 extends PApplet {
 
     /** The starting position. */
@@ -41,6 +39,12 @@ public class Chess2 extends PApplet {
         // Make first move if its the engines turn at the beginning
         if (chessboard.board.whiteToMove != playWhite) {
             new Thread(() -> {
+                try {
+                    Thread.sleep(1000); // wait 1 second, so that the player can observe the first move
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
                 chessboard.movePieceForEngine(engine);
                 chessboard.changePlayer();
             }).start();

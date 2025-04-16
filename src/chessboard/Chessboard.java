@@ -6,6 +6,10 @@ import processing.core.PConstants;
 import processing.core.PImage;
 
 import javax.swing.JOptionPane;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +24,9 @@ public class Chessboard {
     public final BoardEnv board;
 
     private Map<Character, PImage> images;
-    private int selectedRow, selectedCol = -1;
+    public static List<List<String>> openings = new ArrayList<>();
 
-    // Castling rights management
+    private int selectedRow, selectedCol = -1;
 
     private List<Move> legalMoves;
 
@@ -39,22 +43,41 @@ public class Chessboard {
      * Loads the images of the pieces.
      */
     public void loadImages() {
-        String baseURL = "/src/Resources/Images/";
+        String baseFilePath = "src/Resources/Images/";
         images = Map.ofEntries(
-                Map.entry('b', sketch.loadImage(baseURL + "black_bishop.png")),
-                Map.entry('k', sketch.loadImage(baseURL + "black_king.png")),
-                Map.entry('n', sketch.loadImage(baseURL + "black_knight.png")),
-                Map.entry('p', sketch.loadImage(baseURL + "black_pawn.png")),
-                Map.entry('q', sketch.loadImage(baseURL + "black_queen.png")),
-                Map.entry('r', sketch.loadImage(baseURL + "black_rook.png")),
+                Map.entry('b', sketch.loadImage(baseFilePath + "black_bishop.png")),
+                Map.entry('k', sketch.loadImage(baseFilePath + "black_king.png")),
+                Map.entry('n', sketch.loadImage(baseFilePath + "black_knight.png")),
+                Map.entry('p', sketch.loadImage(baseFilePath + "black_pawn.png")),
+                Map.entry('q', sketch.loadImage(baseFilePath + "black_queen.png")),
+                Map.entry('r', sketch.loadImage(baseFilePath + "black_rook.png")),
 
-                Map.entry('B', sketch.loadImage(baseURL + "white_bishop.png")),
-                Map.entry('K', sketch.loadImage(baseURL + "white_king.png")),
-                Map.entry('N', sketch.loadImage(baseURL + "white_knight.png")),
-                Map.entry('P', sketch.loadImage(baseURL + "white_pawn.png")),
-                Map.entry('Q', sketch.loadImage(baseURL + "white_queen.png")),
-                Map.entry('R', sketch.loadImage(baseURL + "white_rook.png"))
+                Map.entry('B', sketch.loadImage(baseFilePath + "white_bishop.png")),
+                Map.entry('K', sketch.loadImage(baseFilePath + "white_king.png")),
+                Map.entry('N', sketch.loadImage(baseFilePath + "white_knight.png")),
+                Map.entry('P', sketch.loadImage(baseFilePath + "white_pawn.png")),
+                Map.entry('Q', sketch.loadImage(baseFilePath + "white_queen.png")),
+                Map.entry('R', sketch.loadImage(baseFilePath + "white_rook.png"))
         );
+    }
+
+    /**
+     * Loads the opening database.
+     */
+    public void loadOpenings() {
+        try (BufferedReader reader = new BufferedReader(new FileReader("src/Resources/opening_db_693.txt"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // Es wird angenommen, dass die Zeilen bereits ohne Häufigkeitsangabe vorliegen
+                String trimmed = line.trim();
+                if (!trimmed.isEmpty()) {
+                    List<String> moves = Arrays.asList(trimmed.split(" "));
+                    openings.add(moves);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        };
     }
 
     /**
@@ -225,23 +248,26 @@ public class Chessboard {
             board.state[move.toRow][move.toCol] = promotedPiece;
         }
 
-        return postMoveCalculations(move.toRow, move.toCol, move.piece, capturedPiece);
+        return postMoveCalculations(move, capturedPiece);
     }
 
     /**
      *  Performs all post-move calculations
-     * @param row the row to which the piece is moved
-     * @param col the col to which the piece is moved
-     * @param movedPiece the char of the movedPiece
+     *
+     * @param move the move that has been played
      * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
      * @return true if game is over (win, draw, lose), else false
      */
-    private boolean postMoveCalculations(int row, int col, char movedPiece, char capturedPiece) {
+    private boolean postMoveCalculations(Move move, char capturedPiece) {
+        // Add played move and update half move count
+        board.playedMoves.add(move);
+        board.totalHalfMoveCount++;
+
         // Update castling rights and en passant target
-        updateRightsAndEnPassant(selectedRow, selectedCol, row, col, capturedPiece);
+        updateRightsAndEnPassant(move, capturedPiece);
 
         // Update half-move clock: reset if a pawn move or capture occurred, otherwise increment.
-        if (Character.toLowerCase(movedPiece) == 'p' || capturedPiece != '\0') {
+        if (Character.toLowerCase(move.piece) == 'p' || capturedPiece != '\0') {
             board.halfMoveClock = 0;
         } else {
             board.halfMoveClock++;
@@ -278,14 +304,11 @@ public class Chessboard {
     /**
      * Update castling rights and en passant target based on the move performed.
      *
-     * @param fromRow move from row
-     * @param fromCol move from col
-     * @param toRow move to row
-     * @param toCol move to col
+     * @param move the move that has been played
      * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
      */
-    public void updateRightsAndEnPassant(int fromRow, int fromCol, int toRow, int toCol, char capturedPiece) {
-        char movingPiece = board.state[toRow][toCol];
+    public void updateRightsAndEnPassant(Move move, char capturedPiece) {
+        char movingPiece = board.state[move.toRow][move.toCol];
         // For kings: remove castling rights if moved
         if (movingPiece == 'K') {
             board.whiteKingSideCastling = false;
@@ -296,42 +319,42 @@ public class Chessboard {
         }
         // For rooks: if rook moved, remove corresponding rights
         if (movingPiece == 'R') {
-            if (fromRow == 7 && fromCol == 0) {
+            if (move.fromRow == 7 && move.fromCol == 0) {
                 board.whiteQueenSideCastling = false;
             }
-            if (fromRow == 7 && fromCol == 7) {
+            if (move.fromRow == 7 && move.fromCol == 7) {
                 board.whiteKingSideCastling = false;
             }
         } else if (movingPiece == 'r') {
-            if (fromRow == 0 && fromCol == 0) {
+            if (move.fromRow == 0 && move.fromCol == 0) {
                 board.blackQueenSideCastling = false;
             }
-            if (fromRow == 0 && fromCol == 7) {
+            if (move.fromRow == 0 && move.fromCol == 7) {
                 board.blackKingSideCastling = false;
             }
         }
         // If a rook is captured from its original square, update castling rights
         if (capturedPiece == 'R') {
-            if (toRow == 7 && toCol == 0) {
+            if (move.toRow == 7 && move.toCol == 0) {
                 board.whiteQueenSideCastling = false;
             }
-            if (toRow == 7 && toCol == 7) {
+            if (move.toRow == 7 && move.toCol == 7) {
                 board.whiteKingSideCastling = false;
             }
         } else if (capturedPiece == 'r') {
-            if (toRow == 0 && toCol == 0) {
+            if (move.toRow == 0 && move.toCol == 0) {
                 board.blackQueenSideCastling = false;
             }
-            if (toRow == 0 && toCol == 7) {
+            if (move.toRow == 0 && move.toCol == 7) {
                 board.blackKingSideCastling = false;
             }
         }
         // En passant: if pawn moved two squares forward having an adjacent enemy pawn, set en passant target, else clear.
-        if (Character.toLowerCase(movingPiece) == 'p' && Math.abs(toRow - fromRow) == 2
-            && (board.state[toRow][toCol+1] == (Character.isUpperCase(movingPiece) ? 'p' : 'P')
-                || board.state[toRow][toCol-1] == (Character.isUpperCase(movingPiece) ? 'p' : 'P'))) {
-            int epRow = (fromRow + toRow) / 2;
-            board.enPassantTarget = new int[]{epRow, fromCol};
+        if (Character.toLowerCase(movingPiece) == 'p' && Math.abs(move.toRow - move.fromRow) == 2
+            && (board.state[move.toRow][move.toCol+1] == (Character.isUpperCase(movingPiece) ? 'p' : 'P')
+                || board.state[move.toRow][move.toCol-1] == (Character.isUpperCase(movingPiece) ? 'p' : 'P'))) {
+            int epRow = (move.fromRow + move.toRow) / 2;
+            board.enPassantTarget = new int[]{epRow, move.fromCol};
         } else {
             board.enPassantTarget = null;
         }

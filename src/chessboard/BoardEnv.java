@@ -2,7 +2,9 @@ package chessboard;
 
 import engine.Engine;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 public class BoardEnv {
@@ -15,9 +17,11 @@ public class BoardEnv {
     public int[] enPassantTarget; // En passant target square: null if none, else [row, col]
     public int[] previousEnPassantTarget; // Store en passant target to later undo a move (only for evaluation)
     public int halfMoveClock = 0; // Counts half moves since last pawn move or capture
+    public int totalHalfMoveCount = 0;
+    public List<Move> playedMoves = new ArrayList<>();
     public final Map<String, Integer> transpositionTable = new java.util.HashMap<>();
 
-    public int evaluation;
+    public Integer evaluation;
 
     public int pieceValueSum;
 
@@ -48,7 +52,6 @@ public class BoardEnv {
         }
         halfMoveClock = Integer.parseInt(FEN.split(" ")[4]);
         int[] evalInfo = Engine.evaluatePosition(this);
-        evaluation = evalInfo[0];
         pieceValueSum = evalInfo[1];
         System.out.println("whiteToMove: " + whiteToMove);
         System.out.println("whiteKingSideCastling: " + whiteKingSideCastling);

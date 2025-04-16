@@ -1,6 +1,7 @@
 package engine;
 
 import chessboard.BoardEnv;
+import chessboard.Chessboard;
 import chessboard.LegalMoveGenerator;
 import chessboard.Move;
 
@@ -25,11 +26,44 @@ public class Engine {
      */
     public BestMove calculateBestMove(BoardEnv board) {
         _debugTime_ApplyMove = 0;
+        BestMove bestMove;
+
+        // Find all openings that follow the current position
+        List<List<String>> remaining = new ArrayList<>();
+        for (List<String> opening : Chessboard.openings) {
+            if (opening.size() > board.playedMoves.size()) {
+                boolean match = true;
+                for (int i = 0; i < board.playedMoves.size(); i++) {
+                    if (!opening.get(i).equals(board.playedMoves.get(i).toString())) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    remaining.add(opening);
+                }
+            }
+        }
+        Chessboard.openings = remaining;
+
+        // If present, choose random opening continuation
+        if (!Chessboard.openings.isEmpty()) {
+            // Wähle zufällig eine der möglichen Openings, die noch passen.
+            List<String> selected = Chessboard.openings.get((int) (Math.random() * Chessboard.openings.size()));
+            // Der nächste Zug entspricht dem Zug an der Position playedMoves.size() in der Opening-Zeile.
+            String nextMove = selected.get(board.playedMoves.size());
+            Move move = createMoveFromSAN(board, nextMove);
+            return new BestMove(move);
+        }
+
+        // Else, calculate best move by iterative DFS
         BoardEnv boardCopy = board.deepCopy();
         int[] evalInfo = Engine.evaluatePosition(boardCopy);
         boardCopy.evaluation = evalInfo[0];
         boardCopy.pieceValueSum = evalInfo[1];
-        BestMove bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(boardCopy);
+        bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(boardCopy);
+
+        // Debugging
         System.out.printf("Calculation parts: generate all legal moves: %dms, " +
                         "evaluate Position: %dms," +
                         "applyMove: %dms\n",
@@ -37,14 +71,19 @@ public class Engine {
         _debugTime_GenerateAllLegalMoves = 0;
         _debugTime_EvaluatePosition = 0;
         _debugTime_ApplyMove = 0;
+
         return bestMove;
     }
 
     // Helper class to store the best move and its evaluation value.
     public static class BestMove {
         public Move move;
-        public int evaluation;
+        public Integer evaluation;
         public List<String> moveSequence = new ArrayList<>();
+
+        BestMove(Move move) {
+            this.move = move;
+        }
 
         BestMove(Move move, int evaluation, List<String> previousMoveSequence) {
             this.move = move;
@@ -196,5 +235,65 @@ public class Engine {
         }
         //System.out.println(move + " scored " + score);
         return score;
+    }
+
+    private Move createMoveFromSAN(BoardEnv board, String san) {
+        System.out.println("SAN: " + san);
+        boolean isWhite = board.whiteToMove;
+
+        // Castling move
+        if (san.equals("O-O")) {
+            return new Move(isWhite ? 'K' : 'k', isWhite ? 7 : 0, 4, isWhite ? 7 : 0, 6, false);
+        } else if (san.equals("O-O-O")) {
+            return new Move(isWhite ? 'K' : 'k', isWhite ? 7 : 0, 4, isWhite ? 7 : 0, 2, false);
+        }
+
+        int toCol, toRow;
+        char piece = 'P'; // default: pawn
+        int fromCol = -1;
+        boolean isCapture = san.charAt(1) == 'x';
+
+        // Determine piece if piece is not a pawn
+        if (Character.isUpperCase(san.charAt(0)) && san.charAt(0) != 'O') {
+            piece = san.charAt(0);
+        }
+
+        // For pawns: determine origin column if move is capture
+        if (piece == 'P' && san.length() == 4 && san.charAt(1) == 'x') {
+            fromCol = san.charAt(0) - 'a';
+        }
+
+        // Extract target row and column
+        String targetSquare = san.substring(san.length() - 2);
+        toCol = targetSquare.charAt(0) - 'a';
+        toRow = 8 - Character.getNumericValue(targetSquare.charAt(1));
+
+
+        // Search board for piece
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                char fig = board.state[row][col];
+                if (fig == '\0') continue;
+                if (isWhite != Character.isUpperCase(fig)) continue;
+                if (Character.toUpperCase(fig) != piece) continue;
+
+                if (piece == 'P' && (fromCol != -1 && col != fromCol || fromCol == -1 && col != toCol)) continue;
+                if (!moveIsForPiece(piece, row, col, toRow, toCol)) continue;
+
+                return new Move(isWhite ? fig : Character.toLowerCase(fig), row, col, toRow, toCol, isCapture);
+            }
+        }
+
+        return null;
+    }
+
+    private boolean moveIsForPiece(char piece, int fromRow, int fromCol, int toRow, int toCol) {
+        return switch (piece) {
+            case 'R' -> fromRow == toRow || fromCol == toCol;
+            case 'B' -> Math.abs(fromRow - toRow) == Math.abs(fromCol - toCol);
+            case 'N' -> Math.abs(fromRow - toRow) * Math.abs(fromCol - toCol) == 2;
+            case 'P', 'Q', 'K' -> true; // Pawns are already determined via their column and queen and king are unique
+            default -> false;
+        };
     }
 }

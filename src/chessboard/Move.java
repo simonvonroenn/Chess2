@@ -47,7 +47,6 @@ public class Move {
             sj.add(promotionPiece != '\0' ? "=" + Character.toUpperCase(promotionPiece) : "");
             sj.add(isCheck ? "+" : "");
         }
-        //return "" + (char) ('a' + fromCol) + (8 - fromRow) + (char) ('a' + toCol) + (8 - toRow);
         return sj.toString();
     }
 }

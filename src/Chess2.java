@@ -2,6 +2,8 @@ import engine.Engine;
 import chessboard.Chessboard;
 import processing.core.PApplet;
 
+import java.util.List;
+
 public class Chess2 extends PApplet {
 
     /** The starting position. */
@@ -17,6 +19,8 @@ public class Chess2 extends PApplet {
     public static boolean isGameOver = false;
     private final Chessboard chessboard = new Chessboard(this, TILE_SIZE, FEN);
     private final Engine engine = new Engine();
+    private int xText = BOARD_SIZE + 20; // x-coordinate for displaying text
+    private int yText; // y-coordinate for displaying text
 
     /**
      * Initializes the board.
@@ -33,6 +37,7 @@ public class Chess2 extends PApplet {
     public void setup() {
         frameRate(60);
         chessboard.loadImages();
+        chessboard.loadOpenings();
         // Make first move if its the engines turn at the beginning
         if (chessboard.board.whiteToMove != playWhite) {
             new Thread(() -> {
@@ -47,13 +52,43 @@ public class Chess2 extends PApplet {
      * Updates the visual.
      */
     public void draw(){
+        xText = BOARD_SIZE + 20;
+        yText = 50;
         background(200);
         chessboard.load();
         fill(0);
         textSize(24);
         textAlign(LEFT);
-        text("Evaluation: " + (float) chessboard.board.evaluation / 100, BOARD_SIZE + 50, 50);
+        text("Evaluation: " + (chessboard.board.evaluation == null ? "book" : (float) chessboard.board.evaluation / 100), xText, yText);
+        textSize(18);
+        newLine();
+        newLine();
+        text("Openings left in database: " + Chessboard.openings.size(), xText, yText);
+        newLine();
+        newLine();
+        text("Moves:", xText, yText);
+        newLine();
+        int yTextInitialValue = yText;
+        for (int i = 0; i < chessboard.board.playedMoves.size(); i+=2) {
+            if (yText > BOARD_SIZE) {
+                yText = yTextInitialValue;
+                newColumn();
+            }
+            if (i+1 == chessboard.board.playedMoves.size()) {
+                text(chessboard.board.playedMoves.get(i).toString(), xText, yText);
+                break;
+            }
+            text(chessboard.board.playedMoves.get(i).toString() + " " + chessboard.board.playedMoves.get(i+1).toString() + ",", xText, yText);
+            newLine();
+        }
+    }
 
+    private void newLine() {
+        yText += 20;
+    }
+
+    private void newColumn() {
+        xText += 150;
     }
 
     /**

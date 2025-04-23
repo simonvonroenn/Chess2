@@ -1,9 +1,9 @@
-package engine;
+package main.engine;
 
-import chessboard.BoardEnv;
-import chessboard.Chessboard;
-import chessboard.LegalMoveGenerator;
-import chessboard.Move;
+import main.chessboard.BoardEnv;
+import main.chessboard.Chessboard;
+import main.chessboard.LegalMoveGenerator;
+import main.chessboard.Move;
 
 import java.util.ArrayList;
 import java.util.HashMap;

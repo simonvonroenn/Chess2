@@ -1,9 +1,9 @@
-package engine;
+package main.engine;
 
-import chessboard.BoardEnv;
-import chessboard.LegalMoveGenerator;
-import chessboard.Move;
-import engine.Engine.BestMove;
+import main.chessboard.BoardEnv;
+import main.chessboard.LegalMoveGenerator;
+import main.chessboard.Move;
+import main.engine.Engine.BestMove;
 
 import java.util.Collections;
 import java.util.List;
@@ -50,7 +50,7 @@ public class DepthFirstSearchStrategy {
      */
     private static BestMove depthLimitedDFS(BoardEnv board, int depth, int alpha, int beta, long startTime) {
         // Terminate search if time limit reached
-        //TODO: engine makes weird moves with time limit
+        //TODO: main.engine makes weird moves with time limit
         /*
         if (System.currentTimeMillis() - startTime >= Engine.TIME_LIMIT) {
             return new BestMove(null, evalInfo[0], Collections.emptyList());

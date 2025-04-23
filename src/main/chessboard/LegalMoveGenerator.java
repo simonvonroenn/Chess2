@@ -1,6 +1,6 @@
-package chessboard;
+package main.chessboard;
 
-import engine.Engine;
+import main.engine.Engine;
 
 import java.util.ArrayList;
 import java.util.Collections;

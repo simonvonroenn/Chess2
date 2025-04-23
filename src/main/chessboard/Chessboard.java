@@ -1,6 +1,6 @@
-package chessboard;
+package main.chessboard;
 
-import engine.Engine;
+import main.engine.Engine;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PImage;
@@ -43,7 +43,7 @@ public class Chessboard {
      * Loads the images of the pieces.
      */
     public void loadImages() {
-        String baseFilePath = "src/Resources/Images/";
+        String baseFilePath = "src/main/resources/images/";
         images = Map.ofEntries(
                 Map.entry('b', sketch.loadImage(baseFilePath + "black_bishop.png")),
                 Map.entry('k', sketch.loadImage(baseFilePath + "black_king.png")),
@@ -65,7 +65,7 @@ public class Chessboard {
      * Loads the opening database.
      */
     public void loadOpenings() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("src/Resources/opening_db_693.txt"))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader("src/main/resources/opening_db_693.txt"))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 // Es wird angenommen, dass die Zeilen bereits ohne Häufigkeitsangabe vorliegen
@@ -165,9 +165,9 @@ public class Chessboard {
     }
 
     /**
-     * Move a piece for the engine.
+     * Move a piece for the main.engine.
      *
-     * @param engine the engine
+     * @param engine the main.engine
      * @return true if the game is over (win, draw, lose), else false
      */
     public boolean movePieceForEngine(Engine engine) {
@@ -184,7 +184,7 @@ public class Chessboard {
     }
 
     /**
-     * Moves a piece for either the player or the engine.
+     * Moves a piece for either the player or the main.engine.
      *
      * @param move the move
      *
@@ -242,7 +242,7 @@ public class Chessboard {
                 if (choice == 1) promotedPiece = board.whiteToMove ? 'R' : 'r';
                 else if (choice == 2) promotedPiece = board.whiteToMove ? 'B' : 'b';
                 else if (choice == 3) promotedPiece = board.whiteToMove ? 'N' : 'n';
-            } else { // Promotion without dialog for engine
+            } else { // Promotion without dialog for main.engine
                 promotedPiece = move.promotionPiece;
             }
             board.state[move.toRow][move.toCol] = promotedPiece;

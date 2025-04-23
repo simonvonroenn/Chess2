@@ -1,4 +1,4 @@
-package chessboard;
+package main.chessboard;
 
 import java.util.StringJoiner;
 

@@ -1,2 +1,2 @@
-# Chess2
+# main.Chess2
 Building a Chess AI from scratch

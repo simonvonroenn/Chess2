@@ -1,5 +1,7 @@
-import engine.Engine;
-import chessboard.Chessboard;
+package main;
+
+import main.engine.Engine;
+import main.chessboard.Chessboard;
 import processing.core.PApplet;
 
 public class Chess2 extends PApplet {

@@ -53,6 +53,7 @@ public class BoardEnv {
         halfMoveClock = Integer.parseInt(FEN.split(" ")[4]);
         int[] evalInfo = Engine.evaluatePosition(this);
         pieceValueSum = evalInfo[1];
+        /*
         System.out.println("whiteToMove: " + whiteToMove);
         System.out.println("whiteKingSideCastling: " + whiteKingSideCastling);
         System.out.println("whiteQueenSideCastling: " + whiteQueenSideCastling);
@@ -60,6 +61,7 @@ public class BoardEnv {
         System.out.println("blackQueenSideCastling: " + blackQueenSideCastling);
         System.out.println("enPassantTarget: " + Arrays.toString(enPassantTarget));
         System.out.println("halfMoveClock: " + halfMoveClock);
+         */
     }
 
     public BoardEnv deepCopy() {

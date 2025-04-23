@@ -190,7 +190,7 @@ public class Engine {
      * @param board the current board state
      * @return a list of legal moves
      */
-    protected static List<Move> generateAllLegalMoves(BoardEnv board) {
+    public static List<Move> generateAllLegalMoves(BoardEnv board) {
         long startTime = System.currentTimeMillis();
         List<Move> allMoves = new ArrayList<>();
         for (int row = 0; row < 8; row++) {

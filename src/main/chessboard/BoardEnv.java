@@ -3,7 +3,6 @@ package main.chessboard;
 import main.engine.Engine;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +24,9 @@ public class BoardEnv {
 
     public int pieceValueSum;
 
+    public int[] whiteKingPos;
+    public int[] blackKingPos;
+
     public static int[][] _debug_pieceValues = new int[8][8];
 
     public BoardEnv() {}
@@ -38,6 +40,11 @@ public class BoardEnv {
                     offset += Character.getNumericValue(rows[i].charAt(j)) - 1;
                 } else {
                     state[i][j + offset] = rows[i].charAt(j);
+                    if (rows[i].charAt(j) == 'K') {
+                        whiteKingPos = new int[]{i, j + offset};
+                    } else if (rows[i].charAt(j) == 'k') {
+                        blackKingPos = new int[]{i, j + offset};
+                    }
                 }
             }
         }
@@ -84,6 +91,9 @@ public class BoardEnv {
         copy.halfMoveClock = this.halfMoveClock;
         copy.evaluation = this.evaluation;
         copy.pieceValueSum = this.pieceValueSum;
+
+        copy.whiteKingPos = this.whiteKingPos;
+        copy.blackKingPos = this.blackKingPos;
 
         // Deep copy der Transpositionstabelle
         copy.transpositionTable.putAll(this.transpositionTable);

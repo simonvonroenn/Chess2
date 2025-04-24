@@ -77,7 +77,7 @@ public class Chessboard {
             }
         } catch (IOException e) {
             e.printStackTrace();
-        };
+        }
     }
 
     /**
@@ -116,7 +116,7 @@ public class Chessboard {
      */
     public void selectPiece(int row, int col) {
         char piece = board.state[row][col];
-        if (Character.isLetter(piece) && (row != selectedRow || col != selectedCol)) {
+        if (Character.isLetter(piece) && board.whiteToMove == Character.isUpperCase(piece) && (row != selectedRow || col != selectedCol)) {
             selectedRow = row;
             selectedCol = col;
             legalMoves = LegalMoveGenerator.generateLegalMoves(board, selectedRow, selectedCol);
@@ -263,6 +263,15 @@ public class Chessboard {
         board.playedMoves.add(move);
         board.totalHalfMoveCount++;
 
+        // Update king positions
+        if (move.piece == 'K') {
+            board.whiteKingPos = new int[]{move.toRow, move.toCol};
+        } else if (move.piece == 'k') {
+            board.blackKingPos = new int[]{move.toRow, move.toCol};
+        }
+        //System.out.println("whiteKingPos: " + board.whiteKingPos[0] + " " + board.whiteKingPos[1]);
+        //System.out.println("blackKingPos: " + board.blackKingPos[0] + " " + board.blackKingPos[1]);
+
         // Update castling rights and en passant target
         updateRightsAndEnPassant(move, capturedPiece);
 
@@ -281,21 +290,29 @@ public class Chessboard {
         if (board.halfMoveClock >= 100) {
             System.out.println("Draw by 50-move rule!");
             return true;
-        } else if (board.transpositionTable.get(state) >= 3) {
+        }
+        if (board.transpositionTable.get(state) >= 3) {
             System.out.println("Draw by threefold repetition!");
             return true;
-        } else if (insufficientMaterial()) {
+        }
+        if (insufficientMaterial()) {
             System.out.println("Draw by insufficient material!");
             return true;
         }
-        // Check for checkmate or stalemate if none of the above conditions apply
-        else if (LegalMoveGenerator.isCheckmate(board)) {
+
+        // Check for checkmate or stalemate
+        board.whiteToMove = !board.whiteToMove; // Change player to check if the opoonent is checkmated/stalemated
+        if (LegalMoveGenerator.isCheckmate(board)) {
+            board.whiteToMove = !board.whiteToMove;
             System.out.println((board.whiteToMove ? "Black" : "White") + " wins by checkmate!");
             return true;
-        } else if (LegalMoveGenerator.isStalemate(board)) {
+        }
+        if (LegalMoveGenerator.isStalemate(board)) {
+            board.whiteToMove = !board.whiteToMove;
             System.out.println("Draw by stalemate!");
             return true;
         }
+        board.whiteToMove = !board.whiteToMove;
         return false;
     }
 
@@ -351,8 +368,8 @@ public class Chessboard {
         }
         // En passant: if pawn moved two squares forward having an adjacent enemy pawn, set en passant target, else clear.
         if (Character.toLowerCase(movingPiece) == 'p' && Math.abs(move.toRow - move.fromRow) == 2
-            && (board.state[move.toRow][move.toCol+1] == (Character.isUpperCase(movingPiece) ? 'p' : 'P')
-                || board.state[move.toRow][move.toCol-1] == (Character.isUpperCase(movingPiece) ? 'p' : 'P'))) {
+            && (move.toCol < 7 && board.state[move.toRow][move.toCol+1] == (Character.isUpperCase(movingPiece) ? 'p' : 'P')
+                || move.toCol > 0 && board.state[move.toRow][move.toCol-1] == (Character.isUpperCase(movingPiece) ? 'p' : 'P'))) {
             int epRow = (move.fromRow + move.toRow) / 2;
             board.enPassantTarget = new int[]{epRow, move.fromCol};
         } else {

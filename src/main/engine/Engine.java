@@ -1,5 +1,6 @@
 package main.engine;
 
+import main.Chess2;
 import main.chessboard.BoardEnv;
 import main.chessboard.Chessboard;
 import main.chessboard.LegalMoveGenerator;
@@ -28,19 +29,22 @@ public class Engine {
         _debugTime_ApplyMove = 0;
         BestMove bestMove;
 
+        final String STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         // Find all openings that follow the current position
         List<List<String>> remaining = new ArrayList<>();
-        for (List<String> opening : Chessboard.openings) {
-            if (opening.size() > board.playedMoves.size()) {
-                boolean match = true;
-                for (int i = 0; i < board.playedMoves.size(); i++) {
-                    if (!opening.get(i).equals(board.playedMoves.get(i).toString())) {
-                        match = false;
-                        break;
+        if (Chess2.FEN.equals(STARTING_FEN)) {
+            for (List<String> opening : Chessboard.openings) {
+                if (opening.size() > board.playedMoves.size()) {
+                    boolean match = true;
+                    for (int i = 0; i < board.playedMoves.size(); i++) {
+                        if (!opening.get(i).equals(board.playedMoves.get(i).toString())) {
+                            match = false;
+                            break;
+                        }
                     }
-                }
-                if (match) {
-                    remaining.add(opening);
+                    if (match) {
+                        remaining.add(opening);
+                    }
                 }
             }
         }
@@ -137,9 +141,41 @@ public class Engine {
             newPieceValueSum += Math.abs(promotionPieceValue);
         }
 
+        // Parameters for Executing Simple Checkmate Patterns
+        // Forcing opponent king to the corner
+        int opponentKingDstFromCentreDeltaValue = 0;
+        if (Character.toLowerCase(move.piece) == 'k' && Chess2.playWhite == Character.isUpperCase(move.piece)) {
+            int opponentKingDstToCentreRowDelta = Math.max(3 - move.toRow, move.toRow - 4) - Math.max(3 - move.fromRow, move.fromRow - 4);
+            int opponentKingDstToCentreColDelta = Math.max(3 - move.toCol, move.toCol - 4) - Math.max(3 - move.fromCol, move.fromCol - 4);
+            int opponentKingDstToCentreDelta = opponentKingDstToCentreRowDelta + opponentKingDstToCentreColDelta;
+            opponentKingDstFromCentreDeltaValue = (Chess2.playWhite ? -1 : 1) * 20 * opponentKingDstToCentreDelta;
+        }
+        // Incentivize moving own king closer to opponent king
+        int dstBetweenKingsDeltaValue = 0;
+        if (Character.toLowerCase(move.piece) == 'k') {
+            int dstBetweenKingsRowDelta;
+            int dstBetweenKingsColDelta;
+            if (Chess2.playWhite == Character.isUpperCase(move.piece)) {
+                int ownKingRow = Chess2.playWhite ? board.blackKingPos[0] : board.whiteKingPos[0];
+                int ownKingCol = Chess2.playWhite ? board.blackKingPos[1] : board.whiteKingPos[1];
+                dstBetweenKingsRowDelta = Math.abs(ownKingRow - move.toRow) - Math.abs(ownKingRow - move.fromRow);
+                dstBetweenKingsColDelta = Math.abs(ownKingCol - move.toCol) - Math.abs(ownKingCol - move.fromCol);
+            } else {
+                int opponentKingRow = Chess2.playWhite ? board.whiteKingPos[0] : board.blackKingPos[0];
+                int opponentKingCol = Chess2.playWhite ? board.whiteKingPos[1] : board.blackKingPos[1];
+                dstBetweenKingsRowDelta = Math.abs(move.toRow - opponentKingRow) - Math.abs(move.fromRow - opponentKingRow);
+                dstBetweenKingsColDelta = Math.abs(move.toCol - opponentKingCol) - Math.abs(move.fromCol - opponentKingCol);
+            }
+
+            int dstBetweenKingsDelta = - (dstBetweenKingsRowDelta + dstBetweenKingsColDelta);
+            dstBetweenKingsDeltaValue = (Chess2.playWhite ? -1 : 1) * 20 * dstBetweenKingsDelta;
+        }
+
+        float endgameWeight = 1 - (float) newPieceValueSum / PieceValues.MAX_PIECE_VALUE_SUM;
         int evalDelta = -capturedPieceValue + movePieceTableValueAfter - movePieceTableValueBefore
                         + castlingRookTableValueDelta // if castling
-                        + promotionPieceValue + promotionPieceTableValue; // if promotion
+                        + promotionPieceValue + promotionPieceTableValue // if promotion
+                        + Math.round((opponentKingDstFromCentreDeltaValue + dstBetweenKingsDeltaValue) * endgameWeight); // for simple checkmate patterns
 
         _debugTime_EvaluatePosition += System.currentTimeMillis() - startTime;
 
@@ -148,6 +184,7 @@ public class Engine {
 
     /**
      * Evaluates a position based on piece value and piece position value.
+     * (currently only used for getting the debug piece values)
      *
      * @param board the current board state
      * @return the evaluation and the sum of all piece values
@@ -156,18 +193,12 @@ public class Engine {
         int evaluation = 0;
         int pieceValueSum = 0;
         int pieceTotalValue;
-        int[] whiteKingPos = new int[0];
-        int[] blackKingPos = new int[0];
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 char piece = board.state[row][col];
                 int pieceValue = PieceValues.getPieceValue(piece);
                 int pieceTableValue = Character.toLowerCase(piece) != 'k' ? PieceValues.getPieceTableValue(piece, row, col, 0) : 0;
-                if (piece == 'K') {
-                    whiteKingPos = new int[]{row, col};
-                } else if (piece == 'k') {
-                    blackKingPos = new int[]{row, col};
-                } else {
+                if (Character.toLowerCase(piece) != 'k') {
                     pieceValueSum += Math.abs(pieceValue);
                     pieceTotalValue = pieceValue + pieceTableValue;
                     evaluation += pieceTotalValue;
@@ -175,12 +206,12 @@ public class Engine {
                 }
             }
         }
-        pieceTotalValue = PieceValues.KING + PieceValues.getPieceTableValue('K', whiteKingPos[0], whiteKingPos[1], pieceValueSum);
+        pieceTotalValue = PieceValues.KING + PieceValues.getPieceTableValue('K', board.whiteKingPos[0], board.whiteKingPos[1], pieceValueSum);
         evaluation += pieceTotalValue;
-        BoardEnv._debug_pieceValues[whiteKingPos[0]][whiteKingPos[1]] = Math.abs(pieceTotalValue);
-        pieceTotalValue = -PieceValues.KING + PieceValues.getPieceTableValue('k', blackKingPos[0], blackKingPos[1], pieceValueSum);
+        BoardEnv._debug_pieceValues[board.whiteKingPos[0]][board.whiteKingPos[1]] = Math.abs(pieceTotalValue);
+        pieceTotalValue = -PieceValues.KING + PieceValues.getPieceTableValue('k', board.blackKingPos[0], board.blackKingPos[1], pieceValueSum);
         evaluation += pieceTotalValue;
-        BoardEnv._debug_pieceValues[blackKingPos[0]][blackKingPos[1]] = Math.abs(pieceTotalValue);
+        BoardEnv._debug_pieceValues[board.blackKingPos[0]][board.blackKingPos[1]] = Math.abs(pieceTotalValue);
         return new int[]{evaluation, pieceValueSum};
     }
 
@@ -197,7 +228,7 @@ public class Engine {
             for (int col = 0; col < 8; col++) {
                 char piece = board.state[row][col];
                 if (piece == '\0') continue;
-                if ((board.whiteToMove && Character.isUpperCase(piece)) || (!board.whiteToMove && Character.isLowerCase(piece))) {
+                if (board.whiteToMove == Character.isUpperCase(piece)) {
                     allMoves.addAll(LegalMoveGenerator.generateLegalMoves(board, row, col));
                 }
             }

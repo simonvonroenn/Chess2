@@ -8,7 +8,7 @@ public class Chess2 extends PApplet {
 
     /** The starting position. */
     public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    //public static final String FEN = "r1bq1rk1/ppp2p1p/2n1p2p/3pP3/1b1P4/2NB1N1P/PPP2PP1/R2Q1RK1 w - - 0 1";
+    //public static final String FEN = "8/8/8/3k4/8/2n1K3/2b5/8 b - - 0 1";
     /** Set to true if the user wants to play white; Set to false if the user wants to play black */
     public static final boolean playWhite = true;
 
@@ -16,9 +16,9 @@ public class Chess2 extends PApplet {
 
     public static final int BOARD_SIZE = 800;
     public static final int TILE_SIZE = BOARD_SIZE / 8;
-    public static boolean isGameOver = false;
     private final Chessboard chessboard = new Chessboard(this, TILE_SIZE, FEN);
     private final Engine engine = new Engine();
+    public boolean isGameOver = false;
     private int xText = BOARD_SIZE + 20; // x-coordinate for displaying text
     private int yText; // y-coordinate for displaying text
 
@@ -65,7 +65,10 @@ public class Chess2 extends PApplet {
         fill(0);
         textSize(24);
         textAlign(LEFT);
-        text("Evaluation: " + (chessboard.board.evaluation == null ? "book" : (float) chessboard.board.evaluation / 100), xText, yText);
+        String evaluationText = isGameOver || chessboard.board.totalHalfMoveCount == 0 ? "" :
+                (chessboard.board.evaluation == null ? "book" :
+                        String.valueOf((float) chessboard.board.evaluation / 100));
+        text("Evaluation: " + evaluationText, xText, yText);
         textSize(18);
         newLine();
         newLine();

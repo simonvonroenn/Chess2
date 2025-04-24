@@ -263,6 +263,11 @@ public class LegalMoveGenerator {
         if ((move.piece == 'P' && move.toRow == 0) || (move.piece == 'p' && move.toRow == 7)) {
             board.state[move.toRow][move.toCol] = move.promotionPiece;
         }
+        if (move.piece == 'K') {
+            board.whiteKingPos = new int[]{move.toRow, move.toCol};
+        } else if (move.piece == 'k') {
+            board.blackKingPos = new int[]{move.toRow, move.toCol};
+        }
         Engine._debugTime_ApplyMove += System.currentTimeMillis() - startTime;
         return pieceCaptured;
     }
@@ -305,6 +310,11 @@ public class LegalMoveGenerator {
             board.state[move.fromRow][move.fromCol] = move.piece;
             board.state[move.toRow][move.toCol] = pieceCaptured;
         }
+        if (move.piece == 'K') {
+            board.whiteKingPos = new int[]{move.fromRow, move.fromCol};
+        } else if (move.piece == 'k') {
+            board.blackKingPos = new int[]{move.fromRow, move.fromCol};
+        }
         Engine._debugTime_ApplyMove += System.currentTimeMillis() - startTime;
     }
 
@@ -331,19 +341,8 @@ public class LegalMoveGenerator {
      * @return true if the king is in check, otherwise false
      */
     public static boolean isKingInCheck(BoardEnv board, boolean whiteKing) {
-        int kingRow = -1, kingCol = -1;
-        char kingChar = whiteKing ? 'K' : 'k';
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                if (board.state[i][j] == kingChar) {
-                    kingRow = i;
-                    kingCol = j;
-                    break;
-                }
-            }
-            if (kingRow != -1) break;
-        }
-        if (kingRow == -1) return false;
+        int kingRow = whiteKing ? board.whiteKingPos[0] : board.blackKingPos[0];
+        int kingCol = whiteKing ? board.whiteKingPos[1] : board.blackKingPos[1];
         return isSquareAttacked(board, kingRow, kingCol, !whiteKing);
     }
 
@@ -441,7 +440,7 @@ public class LegalMoveGenerator {
             for (int col = 0; col < 8; col++) {
                 char piece = board.state[row][col];
                 if (piece == '\0') continue;
-                if ((board.whiteToMove && Character.isUpperCase(piece)) || (!board.whiteToMove && Character.isLowerCase(piece))) {
+                if (board.whiteToMove == Character.isUpperCase(piece)) {
                     List<Move> moves = generateLegalMoves(board, row, col);
                     if (!moves.isEmpty()) return false; // The player has at least one legal move
                 }
@@ -451,7 +450,7 @@ public class LegalMoveGenerator {
     }
 
     /**
-     * Checks if the current player is in stalemate.
+     * Checks if the current position is a stalemate.
      *
      * @param board the current chess position
      * @return true if the position is a stalemate, otherwise false
@@ -462,7 +461,7 @@ public class LegalMoveGenerator {
             for (int col = 0; col < 8; col++) {
                 char piece = board.state[row][col];
                 if (piece == '\0') continue;
-                if ((board.whiteToMove && Character.isUpperCase(piece)) || (!board.whiteToMove && Character.isLowerCase(piece))) {
+                if (board.whiteToMove == Character.isUpperCase(piece)) {
                     List<Move> legalMoves = generateLegalMoves(board, row, col);
                     if (!legalMoves.isEmpty()) return false; // The player has at least one legal move
                 }

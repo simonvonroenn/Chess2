@@ -30,6 +30,8 @@ public class Chessboard {
 
     private List<Move> legalMoves;
 
+    private static long debugStartTime = 0;
+
     /**
      * Integrates Processing in Java.
      */
@@ -119,7 +121,7 @@ public class Chessboard {
         if (Character.isLetter(piece) && board.whiteToMove == Character.isUpperCase(piece) && (row != selectedRow || col != selectedCol)) {
             selectedRow = row;
             selectedCol = col;
-            legalMoves = LegalMoveGenerator.generateLegalMoves(board, selectedRow, selectedCol);
+            legalMoves = LegalMoveGenerator.generateLegalMoves(board, selectedRow, selectedCol, false);
             for (Move move : legalMoves) {
                 System.out.println(move.toString());
             }
@@ -153,9 +155,9 @@ public class Chessboard {
      * @return true if the game is over (win, draw, lose), else false
      */
     public boolean movePieceForPlayer(int toRow, int toCol) {
-        Move move = new Move(board.state[selectedRow][selectedCol], selectedRow, selectedCol, toRow, toCol, board.state[toRow][toCol] != '\0');
+        Move move = new Move(board.deepCopy(), board.state[selectedRow][selectedCol], selectedRow, selectedCol, toRow, toCol, board.state[toRow][toCol] != '\0');
 
-        boolean isGameOver = movePiece(move);
+        boolean isGameOver = movePiece(board, move, false);
 
         Engine.evaluatePosition(board); // for debugging
         printBoard();
@@ -175,7 +177,7 @@ public class Chessboard {
         board.evaluation = bestMove.evaluation;
         Move move = bestMove.move;
 
-        boolean isGameOver = movePiece(move);
+        boolean isGameOver = movePiece(board, move, false);
 
         Engine.evaluatePosition(board); // for debugging
         printBoard();
@@ -190,7 +192,9 @@ public class Chessboard {
      *
      * @return true if the game is over (win, draw, lose), else false
      */
-    public boolean movePiece(Move move) {
+    public static boolean movePiece(BoardEnv board, Move move, boolean skipPostMoveCalculations) {
+        debugStartTime = System.currentTimeMillis();
+
         char capturedPiece = '\0';
         // Check for castling move
         if (Character.toLowerCase(move.piece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
@@ -248,7 +252,18 @@ public class Chessboard {
             board.state[move.toRow][move.toCol] = promotedPiece;
         }
 
-        return postMoveCalculations(move, capturedPiece);
+        // Update king positions
+        if (move.piece == 'K') {
+            board.whiteKingPos = new int[]{move.toRow, move.toCol};
+        } else if (move.piece == 'k') {
+            board.blackKingPos = new int[]{move.toRow, move.toCol};
+        }
+
+        // Change player
+        board.whiteToMove = !board.whiteToMove;
+
+        if (skipPostMoveCalculations) return false;
+        return postMoveCalculations(board, move, capturedPiece);
     }
 
     /**
@@ -258,22 +273,13 @@ public class Chessboard {
      * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
      * @return true if game is over (win, draw, lose), else false
      */
-    private boolean postMoveCalculations(Move move, char capturedPiece) {
+    private static boolean postMoveCalculations(BoardEnv board, Move move, char capturedPiece) {
         // Add played move and update half move count
         board.playedMoves.add(move);
         board.totalHalfMoveCount++;
 
-        // Update king positions
-        if (move.piece == 'K') {
-            board.whiteKingPos = new int[]{move.toRow, move.toCol};
-        } else if (move.piece == 'k') {
-            board.blackKingPos = new int[]{move.toRow, move.toCol};
-        }
-        //System.out.println("whiteKingPos: " + board.whiteKingPos[0] + " " + board.whiteKingPos[1]);
-        //System.out.println("blackKingPos: " + board.blackKingPos[0] + " " + board.blackKingPos[1]);
-
         // Update castling rights and en passant target
-        updateRightsAndEnPassant(move, capturedPiece);
+        updateRightsAndEnPassant(board, move, capturedPiece);
 
         // Update half-move clock: reset if a pawn move or capture occurred, otherwise increment.
         if (Character.toLowerCase(move.piece) == 'p' || capturedPiece != '\0') {
@@ -283,36 +289,34 @@ public class Chessboard {
         }
 
         // Update position repetition count
-        String state = getBoardStateSignature();
+        String state = getBoardStateSignature(board);
         board.transpositionTable.put(state, board.transpositionTable.getOrDefault(state, 0) + 1);
+
+        Engine._debugTime_ApplyMove += System.currentTimeMillis() - debugStartTime;
 
         // Check for draw conditions
         if (board.halfMoveClock >= 100) {
-            System.out.println("Draw by 50-move rule!");
+            //System.out.println("Draw by 50-move rule!");
             return true;
         }
         if (board.transpositionTable.get(state) >= 3) {
-            System.out.println("Draw by threefold repetition!");
+            //System.out.println("Draw by threefold repetition!");
             return true;
         }
-        if (insufficientMaterial()) {
-            System.out.println("Draw by insufficient material!");
+        if (insufficientMaterial(board)) {
+            //System.out.println("Draw by insufficient material!");
             return true;
         }
 
         // Check for checkmate or stalemate
-        board.whiteToMove = !board.whiteToMove; // Change player to check if the opoonent is checkmated/stalemated
         if (LegalMoveGenerator.isCheckmate(board)) {
-            board.whiteToMove = !board.whiteToMove;
-            System.out.println((board.whiteToMove ? "Black" : "White") + " wins by checkmate!");
+            //System.out.println((board.whiteToMove ? "Black" : "White") + " wins by checkmate!");
             return true;
         }
         if (LegalMoveGenerator.isStalemate(board)) {
-            board.whiteToMove = !board.whiteToMove;
-            System.out.println("Draw by stalemate!");
+            //System.out.println("Draw by stalemate!");
             return true;
         }
-        board.whiteToMove = !board.whiteToMove;
         return false;
     }
 
@@ -324,7 +328,7 @@ public class Chessboard {
      * @param move the move that has been played
      * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
      */
-    public void updateRightsAndEnPassant(Move move, char capturedPiece) {
+    public static void updateRightsAndEnPassant(BoardEnv board, Move move, char capturedPiece) {
         char movingPiece = board.state[move.toRow][move.toCol];
         // For kings: remove castling rights if moved
         if (movingPiece == 'K') {
@@ -381,7 +385,7 @@ public class Chessboard {
      * Generates a signature string representing the current board state,
      * including piece positions, turn, castling rights, and en passant target.
      */
-    private String getBoardStateSignature() {
+    private static String getBoardStateSignature(BoardEnv board) {
         StringBuilder sb = new StringBuilder();
         // Append board configuration
         for (int i = 0; i < 8; i++) {
@@ -408,7 +412,7 @@ public class Chessboard {
      *
      * @return true if neither side has sufficient material to force checkmate.
      */
-    private boolean insufficientMaterial() {
+    private static boolean insufficientMaterial(BoardEnv board) {
         int whiteKnights = 0, whiteBishops = 0;
         int blackKnights = 0, blackBishops = 0;
         boolean hasWhiteLightBishop = false, hasWhiteDarkBishop = false;

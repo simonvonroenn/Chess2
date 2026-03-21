@@ -1,22 +1,23 @@
 package main.chessboard;
 
-import main.engine.Engine;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class LegalMoveGenerator {
 
+    private LegalMoveGenerator() {}
+
     /**
      * Generates legal moves for a given piece in a position.
      *
-     * @param board the position
+     * @param originalBoard the position
      * @param row row of the piece
      * @param col col of the piece
      * @return a list of legal moves
      */
-    public static List<Move> generateLegalMoves(BoardEnv board, int row, int col) {
+    public static List<Move> generateLegalMoves(BoardEnv originalBoard, int row, int col, boolean skipPostMoveCalculations) {
+        BoardEnv board = originalBoard.deepCopy();
         List<Move> pseudoMoves = new ArrayList<>();
         char piece = board.state[row][col];
 
@@ -36,14 +37,17 @@ public class LegalMoveGenerator {
         // Filter out moves that leave the king in check
         List<Move> legalMoves = new ArrayList<>();
         for (Move move : pseudoMoves) {
-            char pieceCaptured = applyMove(board, move);
-            if (!isKingInCheck(board, board.whiteToMove)) { // Check if move leaves own king in check
-                if (isKingInCheck(board, !board.whiteToMove)) { // Check if move checks the opponent's king
+            boolean isGameOVer = Chessboard.movePiece(board, move, skipPostMoveCalculations);
+            if (!isKingInCheck(board, !board.whiteToMove)) { // Check if move leaves own king in check
+                if (isKingInCheck(board, board.whiteToMove)) { // Check if move checks the opponent's king
                     move.setCheck();
+                    if (isGameOVer) {
+                        move.setCheckmate();
+                    }
                 }
                 legalMoves.add(move);
             }
-            undoMove(board, move, pieceCaptured);
+            board = move.previousBoardEnv.deepCopy(); // Undo move
         }
         return legalMoves;
     }
@@ -56,21 +60,21 @@ public class LegalMoveGenerator {
         // Move
         if (isNotOutOfBoard(newRow, col) && isEmpty(board, newRow, col)) {
             if (newRow == 0 || newRow == 7) {
-                Move promoteQueen = new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
+                Move promoteQueen = new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
                 promoteQueen.setPromotionPiece(board.whiteToMove ? 'Q' : 'q');
-                Move promoteKnight = new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
+                Move promoteKnight = new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
                 promoteKnight.setPromotionPiece(board.whiteToMove ? 'N' : 'n');
-                Move promoteRook = new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
+                Move promoteRook = new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
                 promoteRook.setPromotionPiece(board.whiteToMove ? 'R' : 'r');
-                Move promoteBishop = new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
+                Move promoteBishop = new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false);
                 promoteBishop.setPromotionPiece(board.whiteToMove ? 'B' : 'b');
                 moves.addAll(List.of(promoteQueen, promoteKnight, promoteRook, promoteBishop));
             } else {
-                moves.add(new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false));
+                moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, col, false));
             }
             // Move two fields on first move
             if (row == startRow && isEmpty(board, newRow + direction, col)) {
-                moves.add(new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow + direction, col, false));
+                moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow + direction, col, false));
             }
         }
 
@@ -79,17 +83,17 @@ public class LegalMoveGenerator {
             int newCol = col + side;
             if (isNotOutOfBoard(newRow, newCol) && isNotOwnPiece(board, row, col, newRow, newCol)) {
                 if (newRow == 0 || newRow == 7) {
-                    Move promoteQueen = new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
-                    promoteQueen.setPromotionPiece('Q');
-                    Move promoteKnight = new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
-                    promoteKnight.setPromotionPiece('N');
-                    Move promoteRook = new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
-                    promoteRook.setPromotionPiece('R');
-                    Move promoteBishop = new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
-                    promoteBishop.setPromotionPiece('B');
+                    Move promoteQueen = new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
+                    promoteQueen.setPromotionPiece(board.whiteToMove ? 'Q' : 'q');
+                    Move promoteKnight = new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
+                    promoteKnight.setPromotionPiece(board.whiteToMove ? 'N' : 'n');
+                    Move promoteRook = new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
+                    promoteRook.setPromotionPiece(board.whiteToMove ? 'R' : 'r');
+                    Move promoteBishop = new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true);
+                    promoteBishop.setPromotionPiece(board.whiteToMove ? 'B' : 'b');
                     moves.addAll(List.of(promoteQueen, promoteKnight, promoteRook, promoteBishop));
                 } else {
-                    moves.add(new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true));
+                    moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, newCol, true));
                 }
             }
         }
@@ -102,7 +106,7 @@ public class LegalMoveGenerator {
                 // Check that there is an enemy pawn in the correct position
                 int capturedPawnRow = board.whiteToMove ? newRow + 1 : newRow - 1;
                 if (isNotOutOfBoard(capturedPawnRow, epCol) && Character.toLowerCase(board.state[capturedPawnRow][epCol]) == 'p') {
-                    moves.add(new Move(board.whiteToMove ? 'P' : 'p', row, col, newRow, epCol, true));
+                    moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'P' : 'p', row, col, newRow, epCol, true));
                 }
             }
         }
@@ -127,7 +131,7 @@ public class LegalMoveGenerator {
             int newCol = col + move[1];
             if (isValid(board, row, col, newRow, newCol)) {
                 boolean capture = !isEmpty(board, newRow, newCol);
-                moves.add(new Move(board.whiteToMove ? 'N' : 'n', row, col, newRow, newCol, capture));
+                moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'N' : 'n', row, col, newRow, newCol, capture));
             }
         }
     }
@@ -139,7 +143,7 @@ public class LegalMoveGenerator {
             int newCol = col + move[1];
             if (isValid(board, row, col, newRow, newCol)) {
                 boolean capture = !isEmpty(board, newRow, newCol);
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, newRow, newCol, capture));
+                moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'K' : 'k', row, col, newRow, newCol, capture));
             }
         }
         // Castling moves
@@ -151,7 +155,7 @@ public class LegalMoveGenerator {
                     !isSquareAttacked(board, 7, 4, false) &&
                     !isSquareAttacked(board, 7, 5, false) &&
                     !isSquareAttacked(board, 7, 6, false)) {
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, 7, 6, false));
+                moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'K' : 'k', row, col, 7, 6, false));
             }
             // White queenside castling
             if (board.whiteQueenSideCastling &&
@@ -159,7 +163,7 @@ public class LegalMoveGenerator {
                     !isSquareAttacked(board, 7, 4, false) &&
                     !isSquareAttacked(board, 7, 3, false) &&
                     !isSquareAttacked(board, 7, 2, false)) {
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, 7, 2, false));
+                moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'K' : 'k', row, col, 7, 2, false));
             }
         } else if (board.state[row][col] == 'k' && row == 0 && col == 4) {
             // Black kingside castling
@@ -168,7 +172,7 @@ public class LegalMoveGenerator {
                     !isSquareAttacked(board, 0, 4, true) &&
                     !isSquareAttacked(board, 0, 5, true) &&
                     !isSquareAttacked(board, 0, 6, true)) {
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, 0, 6, false));
+                moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'K' : 'k', row, col, 0, 6, false));
             }
             // Black queenside castling
             if (board.blackQueenSideCastling &&
@@ -176,7 +180,7 @@ public class LegalMoveGenerator {
                     !isSquareAttacked(board, 0, 4, true) &&
                     !isSquareAttacked(board, 0, 3, true) &&
                     !isSquareAttacked(board, 0, 2, true)) {
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, 0, 2, false));
+                moves.add(new Move(board.deepCopy(), board.whiteToMove ? 'K' : 'k', row, col, 0, 2, false));
             }
         }
     }
@@ -186,12 +190,12 @@ public class LegalMoveGenerator {
             int newRow = row + dir[0];
             int newCol = col + dir[1];
             while (isNotOutOfBoard(newRow, newCol) && isEmpty(board, newRow, newCol)) {
-                moves.add(new Move(piece, row, col, newRow, newCol, false));
+                moves.add(new Move(board.deepCopy(), piece, row, col, newRow, newCol, false));
                 newRow += dir[0];
                 newCol += dir[1];
             }
             if (isValid(board, row, col, newRow, newCol)) {
-                moves.add(new Move(piece, row, col, newRow, newCol, true));
+                moves.add(new Move(board.deepCopy(), piece, row, col, newRow, newCol, true));
             }
         }
     }
@@ -210,127 +214,6 @@ public class LegalMoveGenerator {
 
     public static boolean isNotOwnPiece(BoardEnv board, int row, int col, int newRow, int newCol) {
         return Character.isLetter(board.state[newRow][newCol]) && Character.isUpperCase(board.state[row][col]) != Character.isUpperCase(board.state[newRow][newCol]);
-    }
-
-    /**
-     * Applies a move to a copy of the board and returns this copy.
-     *
-     * @param board the current position
-     * @param move the move to apply
-     * @return the position after move application
-     */
-    public static char applyMove(BoardEnv board, Move move) {
-        long startTime = System.currentTimeMillis();
-        //BoardEnv boardCopy = copyBoard(board);
-        char pieceCaptured = board.state[move.toRow][move.toCol];
-        if (Character.toLowerCase(move.piece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
-            // Simulate castling
-            board.state[move.toRow][move.toCol] = move.piece;
-            board.state[move.fromRow][move.fromCol] = '\0';
-            if (move.toCol > move.fromCol) { // kingside
-                board.state[move.toRow][move.toCol - 1] = board.state[move.toRow][7];
-                board.state[move.toRow][7] = '\0';
-                if (board.whiteToMove) board.whiteKingSideCastling = true; else board.blackKingSideCastling = true;
-            } else { // queenside
-                board.state[move.toRow][move.toCol + 1] = board.state[move.toRow][0];
-                board.state[move.toRow][0] = '\0';
-                if (board.whiteToMove) board.whiteQueenSideCastling = true; else board.blackQueenSideCastling = true;
-            }
-        } else if (Character.toLowerCase(move.piece) == 'p'
-                && move.fromCol != move.toCol
-                && board.enPassantTarget != null
-                && move.toRow == board.enPassantTarget[0]
-                && move.toCol == board.enPassantTarget[1]) {
-            // Simulate en passant capture
-            board.state[move.toRow][move.toCol] = move.piece;
-            board.state[move.fromRow][move.fromCol] = '\0';
-            int capturedPawnRow = board.whiteToMove ? move.toRow + 1 : move.toRow - 1;
-            pieceCaptured = board.state[capturedPawnRow][move.toCol];
-            board.state[capturedPawnRow][move.toCol] = '\0';
-            board.previousEnPassantTarget = board.enPassantTarget;
-        } else {
-            if (Character.toLowerCase(move.piece) == 'p' && Math.abs(move.toRow - move.fromRow) == 2
-                    && (move.toCol < 7 && board.state[move.toRow][move.toCol+1] == (Character.isUpperCase(move.piece) ? 'p' : 'P')
-                    || move.toCol > 0 && board.state[move.toRow][move.toCol-1] == (Character.isUpperCase(move.piece) ? 'p' : 'P'))) {
-                // Set en passant target
-                int epRow = (move.fromRow + move.toRow) / 2;
-                board.enPassantTarget = new int[]{epRow, move.fromCol};
-            }
-            // Normal move
-            board.state[move.toRow][move.toCol] = move.piece;
-            board.state[move.fromRow][move.fromCol] = '\0';
-        }
-        if ((move.piece == 'P' && move.toRow == 0) || (move.piece == 'p' && move.toRow == 7)) {
-            board.state[move.toRow][move.toCol] = move.promotionPiece;
-        }
-        if (move.piece == 'K') {
-            board.whiteKingPos = new int[]{move.toRow, move.toCol};
-        } else if (move.piece == 'k') {
-            board.blackKingPos = new int[]{move.toRow, move.toCol};
-        }
-        Engine._debugTime_ApplyMove += System.currentTimeMillis() - startTime;
-        return pieceCaptured;
-    }
-
-    public static void undoMove(BoardEnv board, Move move,  char pieceCaptured) {
-        long startTime = System.currentTimeMillis();
-        if (Character.toLowerCase(move.piece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
-            // Undo castling
-            board.state[move.fromRow][move.fromCol] = move.piece;
-            board.state[move.toRow][move.toCol] = '\0';
-            if (move.toCol > move.fromCol) { // kingside
-                board.state[move.toRow][7] = board.state[move.toRow][move.toCol - 1];
-                board.state[move.toRow][move.toCol - 1] = '\0';
-                if (board.whiteToMove) board.whiteKingSideCastling = false; else board.blackKingSideCastling = false;
-            } else { // queenside
-                board.state[move.toRow][0] = board.state[move.toRow][move.toCol + 1];
-                board.state[move.toRow][move.toCol + 1] = '\0';
-                if (board.whiteToMove) board.whiteQueenSideCastling = false; else board.blackQueenSideCastling = false;
-            }
-        } else if (Character.toLowerCase(move.piece) == 'p'
-                && move.fromCol != move.toCol
-                && board.previousEnPassantTarget != null
-                && move.toRow == board.previousEnPassantTarget[0]
-                && move.toCol == board.previousEnPassantTarget[1]) {
-            // Undo en passant capture
-            board.state[move.fromRow][move.fromCol] = move.piece;
-            board.state[move.toRow][move.toCol] = '\0';
-            int capturedPawnRow = board.whiteToMove ? move.toRow + 1 : move.toRow - 1;
-            board.state[capturedPawnRow][move.toCol] = board.whiteToMove ? 'p' : 'P';
-            board.enPassantTarget = board.previousEnPassantTarget;
-            board.previousEnPassantTarget = null;
-        } else {
-            if (Character.toLowerCase(move.piece) == 'p' && Math.abs(move.toRow - move.fromRow) == 2
-                    && (move.toCol < 7 && board.state[move.toRow][move.toCol+1] == (Character.isUpperCase(move.piece) ? 'p' : 'P')
-                    || move.toCol > 0 && board.state[move.toRow][move.toCol-1] == (Character.isUpperCase(move.piece) ? 'p' : 'P'))) {
-                // Reset en passant target
-                board.enPassantTarget = null;
-            }
-            // Normal move
-            board.state[move.fromRow][move.fromCol] = move.piece;
-            board.state[move.toRow][move.toCol] = pieceCaptured;
-        }
-        if (move.piece == 'K') {
-            board.whiteKingPos = new int[]{move.fromRow, move.fromCol};
-        } else if (move.piece == 'k') {
-            board.blackKingPos = new int[]{move.fromRow, move.fromCol};
-        }
-        Engine._debugTime_ApplyMove += System.currentTimeMillis() - startTime;
-    }
-
-    /**
-     * Creates a deep copy of the board.
-     *
-     * @param board the current chess position
-     * @return the deep copy of the board
-     */
-    @Deprecated
-    public static char[][] copyBoard(BoardEnv board) {
-        char[][] copy = new char[8][8];
-        for (int i = 0; i < 8; i++) {
-            System.arraycopy(board.state[i], 0, copy[i], 0, 8);
-        }
-        return copy;
     }
 
     /**
@@ -441,7 +324,7 @@ public class LegalMoveGenerator {
                 char piece = board.state[row][col];
                 if (piece == '\0') continue;
                 if (board.whiteToMove == Character.isUpperCase(piece)) {
-                    List<Move> moves = generateLegalMoves(board, row, col);
+                    List<Move> moves = generateLegalMoves(board, row, col, true);
                     if (!moves.isEmpty()) return false; // The player has at least one legal move
                 }
             }
@@ -462,7 +345,7 @@ public class LegalMoveGenerator {
                 char piece = board.state[row][col];
                 if (piece == '\0') continue;
                 if (board.whiteToMove == Character.isUpperCase(piece)) {
-                    List<Move> legalMoves = generateLegalMoves(board, row, col);
+                    List<Move> legalMoves = generateLegalMoves(board, row, col, true);
                     if (!legalMoves.isEmpty()) return false; // The player has at least one legal move
                 }
             }

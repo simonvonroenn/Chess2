@@ -1,7 +1,7 @@
 package test;
 
 import main.chessboard.BoardEnv;
-import main.chessboard.LegalMoveGenerator;
+import main.chessboard.Chessboard;
 import main.chessboard.Move;
 import main.engine.Engine;
 import org.junit.jupiter.api.Assertions;
@@ -52,32 +52,31 @@ public class MoveGenerationTest {
     }
 
     private boolean testMoveGenerations(BoardEnv board, int[] correctCounts) {
-        boolean totalPass = true;
         for (int i = 1; i <= MAX_DEPTH; i++) {
             int count = testMoveGenerationForDepth(board, i);
             boolean passed = count == correctCounts[i-1];
-            if (!passed) {
-                totalPass = false;
-            }
             System.out.printf("%s depth %d: %d\n", passed ? "✔" : "✘", i, count);
+            if (!passed) {
+                return false;
+            }
         }
-        return totalPass;
+        return true;
     }
 
-    private int testMoveGenerationForDepth(BoardEnv board, int depth) {
+    private int testMoveGenerationForDepth(BoardEnv originalBoard, int depth) {
         if (depth == 0) {
             return 1;
         }
+
+        BoardEnv board = originalBoard.deepCopy();
 
         List<Move> moves = Engine.generateAllLegalMoves(board);
         int numPositions = 0;
 
         for (Move move : moves) {
-            char pieceCaptured = LegalMoveGenerator.applyMove(board, move);
-            board.whiteToMove = !board.whiteToMove;
+            boolean isGameOver = Chessboard.movePiece(board, move, false);
             numPositions += testMoveGenerationForDepth(board, depth - 1);
-            board.whiteToMove = !board.whiteToMove;
-            LegalMoveGenerator.undoMove(board, move, pieceCaptured);
+            board = move.previousBoardEnv.deepCopy(); // Undo move
         }
 
         return numPositions;

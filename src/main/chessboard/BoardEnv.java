@@ -92,10 +92,9 @@ public class BoardEnv {
         copy.evaluation = this.evaluation;
         copy.pieceValueSum = this.pieceValueSum;
 
-        copy.whiteKingPos = this.whiteKingPos;
-        copy.blackKingPos = this.blackKingPos;
+        copy.whiteKingPos = this.whiteKingPos != null ? new int[]{this.whiteKingPos[0], this.whiteKingPos[1]} : null;
+        copy.blackKingPos = this.blackKingPos != null ? new int[]{this.blackKingPos[0], this.blackKingPos[1]} : null;
 
-        // Deep copy der Transpositionstabelle
         copy.transpositionTable.putAll(this.transpositionTable);
 
         return copy;

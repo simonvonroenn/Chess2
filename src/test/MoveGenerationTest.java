@@ -74,7 +74,7 @@ public class MoveGenerationTest {
         int numPositions = 0;
 
         for (Move move : moves) {
-            boolean isGameOver = Chessboard.movePiece(board, move, false);
+            Chessboard.movePiece(board, move, false);
             numPositions += testMoveGenerationForDepth(board, depth - 1);
             board = move.previousBoardEnv.deepCopy(); // Undo move
         }

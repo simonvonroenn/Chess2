@@ -52,8 +52,8 @@ public class Move {
             sj.add("" + (char) ('a' + toCol));
             sj.add(Integer.toString((8 - toRow)));
             sj.add(promotionPiece != '\0' ? "=" + Character.toUpperCase(promotionPiece) : "");
-            sj.add(isCheckmate ? "#" : (isCheck ? "+" : ""));
         }
+        sj.add(isCheckmate ? "#" : (isCheck ? "+" : ""));
         return sj.toString();
     }
 }

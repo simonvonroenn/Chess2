@@ -1,2 +1,2 @@
-# main.Chess2
-Building a Chess AI from scratch
+# Brathering
+Building a Chess Engine from scratch

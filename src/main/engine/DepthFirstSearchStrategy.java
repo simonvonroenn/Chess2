@@ -2,7 +2,6 @@ package main.engine;
 
 import main.chessboard.BoardEnv;
 import main.chessboard.Chessboard;
-import main.chessboard.LegalMoveGenerator;
 import main.chessboard.Move;
 import main.engine.Engine.BestMove;
 
@@ -10,6 +9,8 @@ import java.util.Collections;
 import java.util.List;
 
 public class DepthFirstSearchStrategy {
+    private DepthFirstSearchStrategy() {}
+
     // Max depth for DFS
     public static final int MAX_DEPTH = 4;
     public static int _debug_positionsAnalyzed;
@@ -65,25 +66,24 @@ public class DepthFirstSearchStrategy {
         BoardEnv board = originalBoard.deepCopy();
         // Generate legal moves for current player
         List<Move> moves = Engine.generateAllLegalMoves(board);
-        if (moves.isEmpty()) {
-            _debug_positionsAnalyzed++;
-            // Terminal state: if checkmate, return loss, else draw.
-            if (LegalMoveGenerator.isCheckmate(board)) {
-                return new BestMove(null, board.whiteToMove ? Integer.MIN_VALUE : Integer.MAX_VALUE, Collections.emptyList());
-            }
-            return new BestMove(null, 0, Collections.emptyList());
-        }
         Engine.orderMoves(board, moves);
         BestMove bestMoveResponse = null;
-        int originalEvaluation = board.evaluation;
-        int originalPieceValueSum = board.pieceValueSum;
         for (Move move : moves) {
             int[] evalInfo = Engine.evaluateMove(board, move);
             board.evaluation = evalInfo[0];
             board.pieceValueSum = evalInfo[1];
-            boolean isGameOver = Chessboard.movePiece(board, move, false);
+            Chessboard.GameOutcome outcome = Chessboard.movePiece(board, move, false);
             BestMove response;
-            if (depth == 1 && (move.isCapture || move.isCheck)) {
+            if (!outcome.equals(Chessboard.GameOutcome.ONGOING)) {
+                _debug_positionsAnalyzed++;
+                if (outcome.equals(Chessboard.GameOutcome.CHECKMATE_WHITE)) {
+                    response = new BestMove(null, Integer.MIN_VALUE, Collections.emptyList());
+                } else if (outcome.equals(Chessboard.GameOutcome.CHECKMATE_BLACK)) {
+                    response = new BestMove(null, Integer.MAX_VALUE, Collections.emptyList());
+                } else {
+                    response =  new BestMove(null, 0, Collections.emptyList());
+                }
+            } else if (depth == 1 && (move.isCapture || move.isCheck)) {
                 response = depthLimitedDFS(board, depth, alpha, beta, startTime);
             } else {
                 response = depthLimitedDFS(board,depth - 1, alpha, beta, startTime);

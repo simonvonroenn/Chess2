@@ -32,6 +32,30 @@ public class Chessboard {
 
     private static long debugStartTime = 0;
 
+    public enum GameOutcome {
+        ONGOING(""),
+        CHECKMATE_WHITE("Black wins by checkmate!"),
+        CHECKMATE_BLACK("White wins by checkmate!"),
+        STALEMATE("Draw by stalemate!"),
+        INSUFFICIENT_MATERIAL("Draw by insufficient material!"),
+        THREE_FOLD_REPETITION("Draw by threefold repetition!"),
+        FIFTY_MOVE_RULE("Draw by 50-move rule!");
+
+        private final String message;
+
+        GameOutcome(String message) {
+            this.message = message;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public boolean isCheckmate() {
+            return this.equals(CHECKMATE_WHITE) || this.equals(CHECKMATE_BLACK);
+        }
+    }
+
     /**
      * Integrates Processing in Java.
      */
@@ -152,37 +176,37 @@ public class Chessboard {
      * @param toRow the row to which the piece is moved
      * @param toCol the col to which the piece is moved
      *
-     * @return true if the game is over (win, draw, lose), else false
+     * @return the game outcome
      */
-    public boolean movePieceForPlayer(int toRow, int toCol) {
+    public GameOutcome movePieceForPlayer(int toRow, int toCol) {
         Move move = new Move(board.deepCopy(), board.state[selectedRow][selectedCol], selectedRow, selectedCol, toRow, toCol, board.state[toRow][toCol] != '\0');
 
-        boolean isGameOver = movePiece(board, move, false);
+        GameOutcome outcome = movePiece(board, move, false);
 
         Engine.evaluatePosition(board); // for debugging
         printBoard();
         resetSelection();
 
-        return isGameOver;
+        return outcome;
     }
 
     /**
      * Move a piece for the main.engine.
      *
      * @param engine the main.engine
-     * @return true if the game is over (win, draw, lose), else false
+     * @return the game outcome
      */
-    public boolean movePieceForEngine(Engine engine) {
+    public GameOutcome movePieceForEngine(Engine engine) {
         Engine.BestMove bestMove = engine.calculateBestMove(board);
         board.evaluation = bestMove.evaluation;
         Move move = bestMove.move;
 
-        boolean isGameOver = movePiece(board, move, false);
+        GameOutcome outcome = movePiece(board, move, false);
 
         Engine.evaluatePosition(board); // for debugging
         printBoard();
 
-        return isGameOver;
+        return outcome;
     }
 
     /**
@@ -190,9 +214,9 @@ public class Chessboard {
      *
      * @param move the move
      *
-     * @return true if the game is over (win, draw, lose), else false
+     * @return the game outcome
      */
-    public static boolean movePiece(BoardEnv board, Move move, boolean skipPostMoveCalculations) {
+    public static GameOutcome movePiece(BoardEnv board, Move move, boolean skipPostMoveCalculations) {
         debugStartTime = System.currentTimeMillis();
 
         char capturedPiece = '\0';
@@ -262,7 +286,7 @@ public class Chessboard {
         // Change player
         board.whiteToMove = !board.whiteToMove;
 
-        if (skipPostMoveCalculations) return false;
+        if (skipPostMoveCalculations) return GameOutcome.ONGOING;
         return postMoveCalculations(board, move, capturedPiece);
     }
 
@@ -271,9 +295,9 @@ public class Chessboard {
      *
      * @param move the move that has been played
      * @param capturedPiece the char of the captured piece or '\0' if no piece was captured
-     * @return true if game is over (win, draw, lose), else false
+     * @return the game outcome
      */
-    private static boolean postMoveCalculations(BoardEnv board, Move move, char capturedPiece) {
+    private static GameOutcome postMoveCalculations(BoardEnv board, Move move, char capturedPiece) {
         // Add played move and update half move count
         board.playedMoves.add(move);
         board.totalHalfMoveCount++;
@@ -296,28 +320,17 @@ public class Chessboard {
 
         // Check for draw conditions
         if (board.halfMoveClock >= 100) {
-            //System.out.println("Draw by 50-move rule!");
-            return true;
+            return GameOutcome.FIFTY_MOVE_RULE;
         }
         if (board.transpositionTable.get(state) >= 3) {
-            //System.out.println("Draw by threefold repetition!");
-            return true;
+            return GameOutcome.THREE_FOLD_REPETITION;
         }
         if (insufficientMaterial(board)) {
-            //System.out.println("Draw by insufficient material!");
-            return true;
+            return GameOutcome.INSUFFICIENT_MATERIAL;
         }
 
         // Check for checkmate or stalemate
-        if (LegalMoveGenerator.isCheckmate(board)) {
-            //System.out.println((board.whiteToMove ? "Black" : "White") + " wins by checkmate!");
-            return true;
-        }
-        if (LegalMoveGenerator.isStalemate(board)) {
-            //System.out.println("Draw by stalemate!");
-            return true;
-        }
-        return false;
+        return LegalMoveGenerator.determineCheckmateOrStalemate(board);
     }
 
 
@@ -462,17 +475,6 @@ public class Chessboard {
     public void resetSelection() {
         selectedRow = -1;
         selectedCol = -1;
-    }
-
-    /**
-     * Changes the player.
-     *
-     * @return true if now white is to move
-     */
-    public boolean changePlayer() {
-        board.whiteToMove = !board.whiteToMove;
-        System.out.println(board.whiteToMove ? "White to move now." : "Black to move now.");
-        return board.whiteToMove;
     }
 
     /**

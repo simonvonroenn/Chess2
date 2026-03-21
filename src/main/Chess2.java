@@ -2,6 +2,7 @@ package main;
 
 import main.engine.Engine;
 import main.chessboard.Chessboard;
+import main.chessboard.Chessboard.GameOutcome;
 import processing.core.PApplet;
 
 public class Chess2 extends PApplet {
@@ -18,8 +19,8 @@ public class Chess2 extends PApplet {
     public static final int TILE_SIZE = BOARD_SIZE / 8;
     private final Chessboard chessboard = new Chessboard(this, TILE_SIZE, FEN);
     private final Engine engine = new Engine();
-    public boolean isGameOver = false;
-    private int xText = BOARD_SIZE + 20; // x-coordinate for displaying text
+    public GameOutcome outcome = GameOutcome.ONGOING;
+    private int xText; // x-coordinate for displaying text
     private int yText; // y-coordinate for displaying text
 
     /**
@@ -31,14 +32,14 @@ public class Chess2 extends PApplet {
     }
 
     /**
-     * Configures frameRate and loads inital position and piece images.
+     * Configures frameRate and loads initial position and piece images.
      * Runs once at startup.
      */
     public void setup() {
         frameRate(60);
         chessboard.loadImages();
         chessboard.loadOpenings();
-        // Make first move if its the engines turn at the beginning
+        // Make first move if it's the engines turn at the beginning
         if (chessboard.board.whiteToMove != playWhite) {
             new Thread(() -> {
                 try {
@@ -48,24 +49,23 @@ public class Chess2 extends PApplet {
                     return;
                 }
                 chessboard.movePieceForEngine(engine);
-                chessboard.changePlayer();
             }).start();
         }
     }
 
     /**
-     * Draws the board continously.
+     * Draws the board continuously.
      * Updates the visual.
      */
     public void draw(){
-        xText = BOARD_SIZE + 20;
+        resetXText();
         yText = 50;
         background(200);
         chessboard.load();
         fill(0);
         textSize(24);
         textAlign(LEFT);
-        String evaluationText = isGameOver || chessboard.board.totalHalfMoveCount == 0 ? "" :
+        String evaluationText = !outcome.equals(GameOutcome.ONGOING) || chessboard.board.totalHalfMoveCount == 0 ? "" :
                 (chessboard.board.evaluation == null ? "book" :
                         String.valueOf((float) chessboard.board.evaluation / 100));
         text("Evaluation: " + evaluationText, xText, yText);
@@ -90,6 +90,8 @@ public class Chess2 extends PApplet {
             text(chessboard.board.playedMoves.get(i).toString() + " " + chessboard.board.playedMoves.get(i+1).toString() + ",", xText, yText);
             newLine();
         }
+        resetXText();
+        text(outcome.getMessage(), xText, yText);
     }
 
     private void newLine() {
@@ -100,6 +102,10 @@ public class Chess2 extends PApplet {
         xText += 150;
     }
 
+    private void resetXText() {
+        xText = BOARD_SIZE + 20;
+    }
+
     /**
      * On mouse click event selects a piece, removes piece selection or moves a piece if it is a legal move.
      */
@@ -107,15 +113,12 @@ public class Chess2 extends PApplet {
         int row = mouseY / TILE_SIZE;
         int col = mouseX / TILE_SIZE;
 
-        if (!isGameOver) {
+        if (outcome.equals(GameOutcome.ONGOING)) {
             if (mouseX < BOARD_SIZE && mouseY < BOARD_SIZE && mouseButton == LEFT) {
                 if (chessboard.isLegalMove(row, col)) {
-                    isGameOver = chessboard.movePieceForPlayer(row, col);
-                    if (!isGameOver && chessboard.changePlayer() != playWhite) {
-                        new Thread(() -> {
-                            isGameOver = chessboard.movePieceForEngine(engine);
-                            if (!isGameOver) chessboard.changePlayer();
-                        }).start();
+                    outcome = chessboard.movePieceForPlayer(row, col);
+                    if (outcome.equals(GameOutcome.ONGOING)) {
+                        new Thread(() -> outcome = chessboard.movePieceForEngine(engine)).start();
                     }
                 } else {
                     chessboard.selectPiece(row, col);

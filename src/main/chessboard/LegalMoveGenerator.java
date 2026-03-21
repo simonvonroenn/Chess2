@@ -1,5 +1,7 @@
 package main.chessboard;
 
+import main.chessboard.Chessboard.GameOutcome;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,11 +39,11 @@ public class LegalMoveGenerator {
         // Filter out moves that leave the king in check
         List<Move> legalMoves = new ArrayList<>();
         for (Move move : pseudoMoves) {
-            boolean isGameOVer = Chessboard.movePiece(board, move, skipPostMoveCalculations);
+            GameOutcome outcome = Chessboard.movePiece(board, move, skipPostMoveCalculations);
             if (!isKingInCheck(board, !board.whiteToMove)) { // Check if move leaves own king in check
                 if (isKingInCheck(board, board.whiteToMove)) { // Check if move checks the opponent's king
                     move.setCheck();
-                    if (isGameOVer) {
+                    if (outcome.isCheckmate()) {
                         move.setCheckmate();
                     }
                 }
@@ -312,44 +314,26 @@ public class LegalMoveGenerator {
     }
 
     /**
-     * Checks if the current position is a checkmate.
+     * Checks if the current position is a checkmate or a stalemate.
      *
      * @param board the current chess position
-     * @return true if the position is a checkmate, otherwise false
+     * @return the game outcome
      */
-    public static boolean isCheckmate(BoardEnv board) {
-        // Checkmate occurs if no legal moves exist and the king is in check
+    public static GameOutcome determineCheckmateOrStalemate(BoardEnv board) {
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 char piece = board.state[row][col];
                 if (piece == '\0') continue;
                 if (board.whiteToMove == Character.isUpperCase(piece)) {
                     List<Move> moves = generateLegalMoves(board, row, col, true);
-                    if (!moves.isEmpty()) return false; // The player has at least one legal move
+                    if (!moves.isEmpty()) return GameOutcome.ONGOING; // The player has at least one legal move
                 }
             }
         }
-        return isKingInCheck(board, board.whiteToMove); // Checkmate only if the king IS in check
-    }
-
-    /**
-     * Checks if the current position is a stalemate.
-     *
-     * @param board the current chess position
-     * @return true if the position is a stalemate, otherwise false
-     */
-    public static boolean isStalemate(BoardEnv board) {
-        // Stalemate occurs if the current player has no legal moves and is not in check
-        for (int row = 0; row < 8; row++) {
-            for (int col = 0; col < 8; col++) {
-                char piece = board.state[row][col];
-                if (piece == '\0') continue;
-                if (board.whiteToMove == Character.isUpperCase(piece)) {
-                    List<Move> legalMoves = generateLegalMoves(board, row, col, true);
-                    if (!legalMoves.isEmpty()) return false; // The player has at least one legal move
-                }
-            }
+        if (isKingInCheck(board, board.whiteToMove)) {
+            return board.whiteToMove ? GameOutcome.CHECKMATE_WHITE : GameOutcome.CHECKMATE_BLACK;
+        } else {
+            return GameOutcome.STALEMATE;
         }
-        return !isKingInCheck(board, board.whiteToMove); // Stalemate only if the king IS NOT in check
     }
 }

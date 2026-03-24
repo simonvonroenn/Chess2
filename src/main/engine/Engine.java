@@ -57,6 +57,12 @@ public class Engine {
             // Der nächste Zug entspricht dem Zug an der Position playedMoves.size() in der Opening-Zeile.
             String nextMove = selected.get(board.playedMoves.size());
             Move move = createMoveFromSAN(board, nextMove);
+            try {
+                Thread.sleep(500); // wait 500ms, so the opening moves are not being played instantaneously
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
             return new BestMove(move);
         }
 

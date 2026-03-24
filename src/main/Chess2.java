@@ -9,7 +9,7 @@ public class Chess2 extends PApplet {
 
     /** The starting position. */
     public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    //public static final String FEN = "8/8/8/3k4/8/2n1K3/2b5/8 b - - 0 1";
+    //public static final String FEN = "1r3rk1/ppp1nppp/2nq4/4Nb2/2BPpP2/1R2P1P1/P1P4P/2BQR1K1 b - - 0 1";
     /** Set to true if the user wants to play white; Set to false if the user wants to play black */
     public static final boolean playWhite = true;
 
@@ -19,7 +19,7 @@ public class Chess2 extends PApplet {
     public static final int TILE_SIZE = BOARD_SIZE / 8;
     private final Chessboard chessboard = new Chessboard(this, TILE_SIZE, FEN);
     private final Engine engine = new Engine();
-    public GameOutcome outcome = GameOutcome.ONGOING;
+    private volatile GameOutcome outcome = GameOutcome.ONGOING;
     private int xText; // x-coordinate for displaying text
     private int yText; // y-coordinate for displaying text
 
@@ -27,6 +27,7 @@ public class Chess2 extends PApplet {
      * Initializes the board.
      * Runs once at startup.
      */
+    @Override
     public void settings() {
         size(BOARD_SIZE + 300, BOARD_SIZE);
     }
@@ -35,9 +36,11 @@ public class Chess2 extends PApplet {
      * Configures frameRate and loads initial position and piece images.
      * Runs once at startup.
      */
+    @Override
     public void setup() {
         frameRate(60);
         chessboard.loadImages();
+        chessboard.loadSounds();
         chessboard.loadOpenings();
         // Make first move if it's the engines turn at the beginning
         if (chessboard.board.whiteToMove != playWhite) {
@@ -57,6 +60,7 @@ public class Chess2 extends PApplet {
      * Draws the board continuously.
      * Updates the visual.
      */
+    @Override
     public void draw(){
         resetXText();
         yText = 50;
@@ -109,6 +113,7 @@ public class Chess2 extends PApplet {
     /**
      * On mouse click event selects a piece, removes piece selection or moves a piece if it is a legal move.
      */
+    @Override
     public void mousePressed() {
         int row = mouseY / TILE_SIZE;
         int col = mouseX / TILE_SIZE;

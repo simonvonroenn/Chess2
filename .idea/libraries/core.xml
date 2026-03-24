@@ -1,7 +1,9 @@
 <component name="libraryTable">
   <library name="core">
     <CLASSES>
-      <root url="jar://C:/Program Files/processing-3.5.4/core/library/core.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../Program Files/processing-3.5.4/core/library/core.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../Program Files/processing-3.5.4/modes/java/libraries/sound/library/sound.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../../Program Files/processing-3.5.4/modes/java/libraries/sound/library/jsyn-17.1.0.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

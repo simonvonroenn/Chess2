@@ -4,6 +4,7 @@ import main.engine.Engine;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PImage;
+import processing.sound.*;
 
 import javax.swing.JOptionPane;
 import java.io.BufferedReader;
@@ -24,6 +25,7 @@ public class Chessboard {
     public final BoardEnv board;
 
     private Map<Character, PImage> images;
+    private Map<String, SoundFile> sounds;
     public static List<List<String>> openings = new ArrayList<>();
 
     private int selectedRow, selectedCol = -1;
@@ -84,6 +86,17 @@ public class Chessboard {
                 Map.entry('P', sketch.loadImage(baseFilePath + "white_pawn.png")),
                 Map.entry('Q', sketch.loadImage(baseFilePath + "white_queen.png")),
                 Map.entry('R', sketch.loadImage(baseFilePath + "white_rook.png"))
+        );
+    }
+
+    /**
+     * Loads the sounds of the game.
+     */
+    public void loadSounds() {
+        String baseFilePath = "src/main/resources/sounds/";
+        sounds = Map.ofEntries(
+                Map.entry("move", new SoundFile(sketch, baseFilePath + "move.wav")),
+                Map.entry("capture", new SoundFile(sketch, baseFilePath + "capture.wav"))
         );
     }
 
@@ -183,9 +196,11 @@ public class Chessboard {
 
         GameOutcome outcome = movePiece(board, move, false);
 
+        playSounds(move);
+        resetSelection();
+
         Engine.evaluatePosition(board); // for debugging
         printBoard();
-        resetSelection();
 
         return outcome;
     }
@@ -202,6 +217,8 @@ public class Chessboard {
         Move move = bestMove.move;
 
         GameOutcome outcome = movePiece(board, move, false);
+
+        playSounds(move);
 
         Engine.evaluatePosition(board); // for debugging
         printBoard();
@@ -467,6 +484,17 @@ public class Chessboard {
         // King and two knights vs. king
         return (whiteKnights == 2 && whiteBishops == 0 && blackKnights + blackBishops == 0) ||
                 (blackKnights == 2 && blackBishops == 0 && whiteKnights + whiteBishops == 0);
+    }
+
+    /**
+     * Plays the sounds according to the type of move.
+     */
+    private void playSounds(Move move) {
+        if (move.isCapture) {
+            sounds.get("capture").play();
+        } else {
+            sounds.get("move").play();
+        }
     }
 
     /**

@@ -2,7 +2,7 @@ package main;
 
 import main.engine.Engine;
 import main.chessboard.Chessboard;
-import main.chessboard.Chessboard.GameOutcome;
+import main.chessboard.GameOutcome;
 import processing.core.PApplet;
 
 public class Chess2 extends PApplet {

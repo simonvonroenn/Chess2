@@ -11,10 +11,9 @@ public class BoardEnv {
     public boolean whiteToMove;
     public boolean whiteKingSideCastling;
     public boolean whiteQueenSideCastling;
-    public boolean blackKingSideCastling ;
+    public boolean blackKingSideCastling;
     public boolean blackQueenSideCastling;
     public int[] enPassantTarget; // En passant target square: null if none, else [row, col]
-    public int[] previousEnPassantTarget; // Store en passant target to later undo a move (only for evaluation)
     public int halfMoveClock = 0; // Counts half moves since last pawn move or capture
     public int totalHalfMoveCount = 0;
     public List<Move> playedMoves = new ArrayList<>();

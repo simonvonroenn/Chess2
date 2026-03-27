@@ -6,14 +6,12 @@ import java.util.StringJoiner;
  * Represents a move on the chess board.
  */
 public class Move {
-    public final BoardEnv previousBoardEnv;
     public final char piece;
     public final int fromRow, fromCol, toRow, toCol;
     public boolean isCapture, isCheck, isCheckmate;
     public char promotionPiece;
 
-    public Move(BoardEnv previousBoardEnv, char piece, int fromRow, int fromCol, int toRow, int toCol, boolean isCapture) {
-        this.previousBoardEnv = previousBoardEnv;
+    public Move(char piece, int fromRow, int fromCol, int toRow, int toCol, boolean isCapture) {
         this.piece = piece;
         this.fromRow = fromRow;
         this.fromCol = fromCol;

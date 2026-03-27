@@ -1,8 +1,6 @@
 package main.engine;
 
-import main.chessboard.BoardEnv;
-import main.chessboard.Chessboard;
-import main.chessboard.Move;
+import main.chessboard.*;
 import main.engine.Engine.BestMove;
 
 import java.util.Collections;
@@ -45,12 +43,12 @@ public class DepthFirstSearchStrategy {
      * Uses a negamax-like approach where the move value is the material gain plus
      * the negative value of the opponent's best response.
      *
-     * @param originalBoard the current board state
+     * @param board the current board state
      * @param depth the current depth limit
      * @param startTime the start time of the search
      * @return a BestMove object containing the best move and its evaluation
      */
-    private static BestMove depthLimitedDFS(BoardEnv originalBoard, int depth, int alpha, int beta, long startTime) {
+    private static BestMove depthLimitedDFS(BoardEnv board, int depth, int alpha, int beta, long startTime) {
         // Terminate search if time limit reached
         //TODO: main.engine makes weird moves with time limit
         /*
@@ -61,9 +59,8 @@ public class DepthFirstSearchStrategy {
         // At depth 0, return board evaluation.
         if (depth == 0) {
             _debug_positionsAnalyzed++;
-            return new BestMove(null, originalBoard.evaluation, Collections.emptyList());
+            return new BestMove(null, board.evaluation, Collections.emptyList());
         }
-        BoardEnv board = originalBoard.deepCopy();
         // Generate legal moves for current player
         List<Move> moves = Engine.generateAllLegalMoves(board);
         Engine.orderMoves(board, moves);
@@ -72,13 +69,13 @@ public class DepthFirstSearchStrategy {
             int[] evalInfo = Engine.evaluateMove(board, move);
             board.evaluation = evalInfo[0];
             board.pieceValueSum = evalInfo[1];
-            Chessboard.GameOutcome outcome = Chessboard.movePiece(board, move, false);
+            MakeMoveResult result = Chessboard.makeMove(board, move, false);
             BestMove response;
-            if (!outcome.equals(Chessboard.GameOutcome.ONGOING)) {
+            if (!result.outcome.equals(GameOutcome.ONGOING)) {
                 _debug_positionsAnalyzed++;
-                if (outcome.equals(Chessboard.GameOutcome.CHECKMATE_WHITE)) {
+                if (result.outcome.equals(GameOutcome.CHECKMATE_WHITE)) {
                     response = new BestMove(null, Integer.MIN_VALUE, Collections.emptyList());
-                } else if (outcome.equals(Chessboard.GameOutcome.CHECKMATE_BLACK)) {
+                } else if (result.outcome.equals(GameOutcome.CHECKMATE_BLACK)) {
                     response = new BestMove(null, Integer.MAX_VALUE, Collections.emptyList());
                 } else {
                     response =  new BestMove(null, 0, Collections.emptyList());
@@ -88,7 +85,7 @@ public class DepthFirstSearchStrategy {
             } else {
                 response = depthLimitedDFS(board,depth - 1, alpha, beta, startTime);
             }
-            board = move.previousBoardEnv.deepCopy(); // Undo move
+            Chessboard.unmakeMove(board, move, result.undoInfo);
             if (board.whiteToMove) {
                 if (bestMoveResponse == null ||  response.evaluation > bestMoveResponse.evaluation) {
                     bestMoveResponse = new BestMove(move, response.evaluation, response.moveSequence);

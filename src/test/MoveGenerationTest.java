@@ -2,6 +2,7 @@ package test;
 
 import main.chessboard.BoardEnv;
 import main.chessboard.Chessboard;
+import main.chessboard.MakeMoveResult;
 import main.chessboard.Move;
 import main.engine.Engine;
 import org.junit.jupiter.api.Assertions;
@@ -63,20 +64,18 @@ public class MoveGenerationTest {
         return true;
     }
 
-    private int testMoveGenerationForDepth(BoardEnv originalBoard, int depth) {
+    private int testMoveGenerationForDepth(BoardEnv board, int depth) {
         if (depth == 0) {
             return 1;
         }
-
-        BoardEnv board = originalBoard.deepCopy();
 
         List<Move> moves = Engine.generateAllLegalMoves(board);
         int numPositions = 0;
 
         for (Move move : moves) {
-            Chessboard.movePiece(board, move, false);
+            MakeMoveResult result = Chessboard.makeMove(board, move, false);
             numPositions += testMoveGenerationForDepth(board, depth - 1);
-            board = move.previousBoardEnv.deepCopy(); // Undo move
+            Chessboard.unmakeMove(board, move, result.undoInfo);
         }
 
         return numPositions;

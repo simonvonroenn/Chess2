@@ -34,30 +34,6 @@ public class Chessboard {
 
     private static long debugStartTime = 0;
 
-    public enum GameOutcome {
-        ONGOING(""),
-        CHECKMATE_WHITE("Black wins by checkmate!"),
-        CHECKMATE_BLACK("White wins by checkmate!"),
-        STALEMATE("Draw by stalemate!"),
-        INSUFFICIENT_MATERIAL("Draw by insufficient material!"),
-        THREE_FOLD_REPETITION("Draw by threefold repetition!"),
-        FIFTY_MOVE_RULE("Draw by 50-move rule!");
-
-        private final String message;
-
-        GameOutcome(String message) {
-            this.message = message;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public boolean isCheckmate() {
-            return this.equals(CHECKMATE_WHITE) || this.equals(CHECKMATE_BLACK);
-        }
-    }
-
     /**
      * Integrates Processing in Java.
      */
@@ -192,9 +168,9 @@ public class Chessboard {
      * @return the game outcome
      */
     public GameOutcome movePieceForPlayer(int toRow, int toCol) {
-        Move move = new Move(board.deepCopy(), board.state[selectedRow][selectedCol], selectedRow, selectedCol, toRow, toCol, board.state[toRow][toCol] != '\0');
+        Move move = new Move(board.state[selectedRow][selectedCol], selectedRow, selectedCol, toRow, toCol, board.state[toRow][toCol] != '\0');
 
-        GameOutcome outcome = movePiece(board, move, false);
+        MakeMoveResult result = makeMove(board, move, false);
 
         playSounds(move);
         resetSelection();
@@ -202,13 +178,13 @@ public class Chessboard {
         Engine.evaluatePosition(board); // for debugging
         printBoard();
 
-        return outcome;
+        return result.outcome;
     }
 
     /**
-     * Move a piece for the main.engine.
+     * Move a piece for the engine.
      *
-     * @param engine the main.engine
+     * @param engine the engine
      * @return the game outcome
      */
     public GameOutcome movePieceForEngine(Engine engine) {
@@ -216,27 +192,31 @@ public class Chessboard {
         board.evaluation = bestMove.evaluation;
         Move move = bestMove.move;
 
-        GameOutcome outcome = movePiece(board, move, false);
+        MakeMoveResult result = makeMove(board, move, false);
 
         playSounds(move);
 
         Engine.evaluatePosition(board); // for debugging
         printBoard();
 
-        return outcome;
+        return result.outcome;
     }
 
     /**
-     * Moves a piece for either the player or the main.engine.
+     * Moves a piece for either the player or the engine.
      *
+     * @param board the board state
      * @param move the move
+     * @param skipPostMoveCalculations for skipping post move calculations (when determining checkmate or stalemate)
      *
-     * @return the game outcome
+     * @return the undo info for undoing the move and the game outcome
      */
-    public static GameOutcome movePiece(BoardEnv board, Move move, boolean skipPostMoveCalculations) {
+    public static MakeMoveResult makeMove(BoardEnv board, Move move, boolean skipPostMoveCalculations) {
         debugStartTime = System.currentTimeMillis();
 
         char capturedPiece = '\0';
+        UndoInfo undoInfo = new UndoInfo(board, '\0');
+        undoInfo.didPostMoveCalculations = !skipPostMoveCalculations;
         // Check for castling move
         if (Character.toLowerCase(move.piece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
             board.state[move.toRow][move.toCol] = move.piece;
@@ -256,22 +236,25 @@ public class Chessboard {
                 && move.toRow == board.enPassantTarget[0]
                 && move.toCol == board.enPassantTarget[1]) {
             // En passant capture
+            undoInfo.wasEnPassant = true;
             board.state[move.toRow][move.toCol] = move.piece;
             board.state[move.fromRow][move.fromCol] = '\0';
-            capturedPiece = (move.piece == 'P' ? board.state[move.toRow + 1][move.toCol] : board.state[move.toRow - 1][move.toCol]);
-            if (move.piece == 'P') {
-                board.state[move.toRow + 1][move.toCol] = '\0';
-            } else {
-                board.state[move.toRow - 1][move.toCol] = '\0';
-            }
+
+            int capturedRow = (move.piece == 'P') ? move.toRow + 1 : move.toRow - 1;
+            capturedPiece = board.state[capturedRow][move.toCol];
+            undoInfo.capturedPawnPos = new int[]{capturedRow, move.toCol};
+            board.state[capturedRow][move.toCol] = '\0';
         } else {
             capturedPiece = board.state[move.toRow][move.toCol];
             board.state[move.toRow][move.toCol] = move.piece;
             board.state[move.fromRow][move.fromCol] = '\0';
         }
 
+        undoInfo.capturedPiece = capturedPiece;
+
         // Promotion
         if ((move.piece == 'P' && move.toRow == 0) || (move.piece == 'p' && move.toRow == 7)) {
+            undoInfo.wasPromotion = true;
             char promotedPiece;
             if (move.promotionPiece == '\0') { // Promotion with dialog for player
                 String[] options = {"Queen", "Rook", "Bishop", "Knight"};
@@ -303,8 +286,15 @@ public class Chessboard {
         // Change player
         board.whiteToMove = !board.whiteToMove;
 
-        if (skipPostMoveCalculations) return GameOutcome.ONGOING;
-        return postMoveCalculations(board, move, capturedPiece);
+        if (skipPostMoveCalculations) {
+            return new MakeMoveResult(GameOutcome.ONGOING, undoInfo);
+        }
+
+        GameOutcome outcome = postMoveCalculations(board, move, capturedPiece);
+
+        undoInfo.positionSignature = getBoardStateSignature(board);
+
+        return new MakeMoveResult(outcome, undoInfo);
     }
 
     /**
@@ -349,8 +339,6 @@ public class Chessboard {
         // Check for checkmate or stalemate
         return LegalMoveGenerator.determineCheckmateOrStalemate(board);
     }
-
-
 
     /**
      * Update castling rights and en passant target based on the move performed.
@@ -408,6 +396,64 @@ public class Chessboard {
             board.enPassantTarget = new int[]{epRow, move.fromCol};
         } else {
             board.enPassantTarget = null;
+        }
+    }
+
+    public static void unmakeMove(BoardEnv board, Move move, UndoInfo undo) {
+        // Restore simple fields
+        board.whiteToMove            = undo.whiteToMove;
+        board.whiteKingSideCastling  = undo.whiteKingSideCastling;
+        board.whiteQueenSideCastling = undo.whiteQueenSideCastling;
+        board.blackKingSideCastling  = undo.blackKingSideCastling;
+        board.blackQueenSideCastling = undo.blackQueenSideCastling;
+        board.halfMoveClock          = undo.halfMoveClock;
+        board.enPassantTarget        = undo.enPassantTarget;
+        board.whiteKingPos           = undo.whiteKingPos;
+        board.blackKingPos           = undo.blackKingPos;
+        board.totalHalfMoveCount     = undo.totalHalfMoveCount;
+
+        // Restore pieces
+        if (Character.toLowerCase(move.piece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
+            // Undo castling
+            board.state[move.fromRow][move.fromCol] = move.piece;
+            board.state[move.toRow][move.toCol] = '\0';
+            if (move.toCol == 6) { // kingside
+                board.state[move.toRow][7] = (move.piece == 'K' ? 'R' : 'r');
+                board.state[move.toRow][5] = '\0';
+            } else { // queenside
+                board.state[move.toRow][0] = (move.piece == 'K' ? 'R' : 'r');
+                board.state[move.toRow][3] = '\0';
+            }
+        } else if (undo.wasEnPassant) {
+            // Undo en passant
+            board.state[move.fromRow][move.fromCol] = move.piece;
+            board.state[move.toRow][move.toCol] = '\0';
+
+            board.state[undo.capturedPawnPos[0]][undo.capturedPawnPos[1]] = undo.capturedPiece;
+
+        } else {
+            // Undo normal move or promotion
+            if (undo.wasPromotion) {
+                board.state[move.fromRow][move.fromCol] =
+                        Character.isUpperCase(move.piece) ? 'P' : 'p';
+            } else {
+                board.state[move.fromRow][move.fromCol] = move.piece;
+            }
+
+            board.state[move.toRow][move.toCol] = undo.capturedPiece; // '\0' if no capture
+        }
+
+        if (undo.didPostMoveCalculations) {
+            // Undo transposition table and move history
+            String signature = undo.positionSignature;
+            int count = board.transpositionTable.getOrDefault(signature, 0) - 1;
+
+            if (count <= 0) board.transpositionTable.remove(signature);
+            else board.transpositionTable.put(signature, count);
+
+            if (!board.playedMoves.isEmpty()) {
+                board.playedMoves.remove(board.playedMoves.size() - 1);
+            }
         }
     }
 

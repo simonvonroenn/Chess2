@@ -67,11 +67,10 @@ public class Engine {
         }
 
         // Else, calculate best move by iterative DFS
-        BoardEnv boardCopy = board.deepCopy();
-        int[] evalInfo = Engine.evaluatePosition(boardCopy);
-        boardCopy.evaluation = evalInfo[0];
-        boardCopy.pieceValueSum = evalInfo[1];
-        bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(boardCopy);
+        int[] evalInfo = Engine.evaluatePosition(board);
+        board.evaluation = evalInfo[0];
+        board.pieceValueSum = evalInfo[1];
+        bestMove = DepthFirstSearchStrategy.iterativeDeepeningSearch(board);
 
         // Debugging
         System.out.printf("Calculation parts: generate all legal moves: %dms, " +
@@ -280,9 +279,9 @@ public class Engine {
 
         // Castling move
         if (san.equals("O-O")) {
-            return new Move(board.deepCopy(), isWhite ? 'K' : 'k', isWhite ? 7 : 0, 4, isWhite ? 7 : 0, 6, false);
+            return new Move(isWhite ? 'K' : 'k', isWhite ? 7 : 0, 4, isWhite ? 7 : 0, 6, false);
         } else if (san.equals("O-O-O")) {
-            return new Move(board.deepCopy(), isWhite ? 'K' : 'k', isWhite ? 7 : 0, 4, isWhite ? 7 : 0, 2, false);
+            return new Move(isWhite ? 'K' : 'k', isWhite ? 7 : 0, 4, isWhite ? 7 : 0, 2, false);
         }
 
         int toCol, toRow;
@@ -317,7 +316,7 @@ public class Engine {
                 if (piece == 'P' && (fromCol != -1 && col != fromCol || fromCol == -1 && col != toCol)) continue;
                 if (!moveIsForPiece(piece, row, col, toRow, toCol)) continue;
 
-                return new Move(board.deepCopy(), isWhite ? fig : Character.toLowerCase(fig), row, col, toRow, toCol, isCapture);
+                return new Move(isWhite ? fig : Character.toLowerCase(fig), row, col, toRow, toCol, isCapture);
             }
         }
 

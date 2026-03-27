@@ -65,6 +65,8 @@ public class DepthFirstSearchStrategy {
         List<Move> moves = Engine.generateAllLegalMoves(board);
         Engine.orderMoves(board, moves);
         BestMove bestMoveResponse = null;
+        int originalEvaluation = board.evaluation;
+        int originalPieceValueSum = board.pieceValueSum;
         for (Move move : moves) {
             int[] evalInfo = Engine.evaluateMove(board, move);
             board.evaluation = evalInfo[0];
@@ -86,6 +88,8 @@ public class DepthFirstSearchStrategy {
                 response = depthLimitedDFS(board,depth - 1, alpha, beta, startTime);
             }
             Chessboard.unmakeMove(board, move, result.undoInfo);
+            board.evaluation = originalEvaluation;
+            board.pieceValueSum = originalPieceValueSum;
             if (board.whiteToMove) {
                 if (bestMoveResponse == null ||  response.evaluation > bestMoveResponse.evaluation) {
                     bestMoveResponse = new BestMove(move, response.evaluation, response.moveSequence);

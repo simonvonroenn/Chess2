@@ -18,11 +18,8 @@ public class BoardEnv {
     public int totalHalfMoveCount = 0;
     public List<Move> playedMoves = new ArrayList<>();
     public final Map<String, Integer> transpositionTable = new java.util.HashMap<>();
-
     public Integer evaluation;
-
     public int pieceValueSum;
-
     public int[] whiteKingPos;
     public int[] blackKingPos;
 
@@ -59,15 +56,6 @@ public class BoardEnv {
         halfMoveClock = Integer.parseInt(FEN.split(" ")[4]);
         int[] evalInfo = Engine.evaluatePosition(this);
         pieceValueSum = evalInfo[1];
-        /*
-        System.out.println("whiteToMove: " + whiteToMove);
-        System.out.println("whiteKingSideCastling: " + whiteKingSideCastling);
-        System.out.println("whiteQueenSideCastling: " + whiteQueenSideCastling);
-        System.out.println("blackKingSideCastling: " + blackKingSideCastling);
-        System.out.println("blackQueenSideCastling: " + blackQueenSideCastling);
-        System.out.println("enPassantTarget: " + Arrays.toString(enPassantTarget));
-        System.out.println("halfMoveClock: " + halfMoveClock);
-         */
     }
 
     public BoardEnv deepCopy() {
@@ -76,25 +64,22 @@ public class BoardEnv {
         for (int i = 0; i < 8; i++) {
             System.arraycopy(this.state[i], 0, copy.state[i], 0, 8);
         }
-
         copy.whiteToMove = this.whiteToMove;
         copy.whiteKingSideCastling = this.whiteKingSideCastling;
         copy.whiteQueenSideCastling = this.whiteQueenSideCastling;
         copy.blackKingSideCastling = this.blackKingSideCastling;
         copy.blackQueenSideCastling = this.blackQueenSideCastling;
-
         if (this.enPassantTarget != null) {
             copy.enPassantTarget = new int[] { this.enPassantTarget[0], this.enPassantTarget[1] };
         }
-
         copy.halfMoveClock = this.halfMoveClock;
+        copy.totalHalfMoveCount = this.totalHalfMoveCount;
+        copy.playedMoves = new ArrayList<>(this.playedMoves);
+        copy.transpositionTable.putAll(this.transpositionTable);
         copy.evaluation = this.evaluation;
         copy.pieceValueSum = this.pieceValueSum;
-
         copy.whiteKingPos = this.whiteKingPos != null ? new int[]{this.whiteKingPos[0], this.whiteKingPos[1]} : null;
         copy.blackKingPos = this.blackKingPos != null ? new int[]{this.blackKingPos[0], this.blackKingPos[1]} : null;
-
-        copy.transpositionTable.putAll(this.transpositionTable);
 
         return copy;
     }

@@ -1,9 +1,12 @@
 package main;
 
+import main.chessboard.Move;
 import main.engine.Engine;
 import main.chessboard.Chessboard;
 import main.chessboard.GameOutcome;
 import processing.core.PApplet;
+
+import java.util.List;
 
 public class Chess2 extends PApplet {
 
@@ -82,16 +85,17 @@ public class Chess2 extends PApplet {
         text("Moves:", xText, yText);
         newLine();
         int yTextInitialValue = yText;
-        for (int i = 0; i < chessboard.board.playedMoves.size(); i+=2) {
+        List<Move> playedMoves = chessboard.board.playedMoves;
+        for (int i = 0; i < playedMoves.size(); i+=2) {
             if (yText > BOARD_SIZE) {
                 yText = yTextInitialValue;
                 newColumn();
             }
-            if (i+1 == chessboard.board.playedMoves.size()) {
-                text(chessboard.board.playedMoves.get(i).toString(), xText, yText);
+            if (i+1 == playedMoves.size()) {
+                text(playedMoves.get(i).toString(), xText, yText);
                 break;
             }
-            text(chessboard.board.playedMoves.get(i).toString() + " " + chessboard.board.playedMoves.get(i+1).toString() + ",", xText, yText);
+            text(playedMoves.get(i).toString() + " " + playedMoves.get(i+1).toString() + ",", xText, yText);
             newLine();
         }
         resetXText();

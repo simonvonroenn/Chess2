@@ -134,7 +134,7 @@ public class Chessboard {
         if (Character.isLetter(piece) && board.whiteToMove == Character.isUpperCase(piece) && (row != selectedRow || col != selectedCol)) {
             selectedRow = row;
             selectedCol = col;
-            legalMoves = LegalMoveGenerator.generateLegalMoves(board, selectedRow, selectedCol, false);
+            legalMoves = LegalMoveGenerator.generateLegalMoves(board.deepCopy(), selectedRow, selectedCol, false);
             for (Move move : legalMoves) {
                 System.out.println(move.toString());
             }
@@ -188,7 +188,7 @@ public class Chessboard {
      * @return the game outcome
      */
     public GameOutcome movePieceForEngine(Engine engine) {
-        Engine.BestMove bestMove = engine.calculateBestMove(board);
+        Engine.BestMove bestMove = engine.calculateBestMove(board.deepCopy());
         board.evaluation = bestMove.evaluation;
         Move move = bestMove.move;
 

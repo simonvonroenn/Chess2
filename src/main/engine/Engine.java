@@ -238,6 +238,7 @@ public class Engine {
                 }
             }
         }
+        LegalMoveGenerator.resolveAmbiguousMoves(allMoves);
         _debugTime_GenerateAllLegalMoves += System.currentTimeMillis() - startTime;
         return allMoves;
     }

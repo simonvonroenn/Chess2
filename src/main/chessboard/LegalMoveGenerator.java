@@ -1,8 +1,6 @@
 package main.chessboard;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class LegalMoveGenerator {
 
@@ -327,6 +325,59 @@ public class LegalMoveGenerator {
             return board.whiteToMove ? GameOutcome.CHECKMATE_WHITE : GameOutcome.CHECKMATE_BLACK;
         } else {
             return GameOutcome.STALEMATE;
+        }
+    }
+
+    /**
+     * Detects ambiguous moves (two pieces of the same type can reach the same square)
+     * and sets the {@code disambiguation} field accordingly.
+     *
+     * <p>Disambiguation priority follows PGN standard:
+     * <ol>
+     *   <li>File letter (e.g. "Nbd2") if the files differ.</li>
+     *   <li>Rank number (e.g. "N1d2") if the files are equal but ranks differ.</li>
+     *   <li>Both file and rank (e.g. "Nb1d2") if neither alone is sufficient
+     *       (only possible with three or more identical pieces).</li>
+     * </ol>
+     *
+     * <p>Pawns and kings are excluded — pawns are disambiguated via capture notation
+     * already, and there is only ever one king per side.
+     *
+     * @param moves the full list of legal moves for the current player
+     */
+    public static void resolveAmbiguousMoves(List<Move> moves) {
+        // Group moves by piece type + destination square
+        Map<String, List<Move>> groups = new HashMap<>();
+        for (Move move : moves) {
+            char p = Character.toLowerCase(move.piece);
+            if (p == 'p' || p == 'k') continue; // never ambiguous
+            String key = move.piece + "," + move.toRow + "," + move.toCol;
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(move);
+        }
+
+        for (List<Move> group : groups.values()) {
+            if (group.size() < 2) continue; // no ambiguity
+
+            boolean fileDistinct = group.stream()
+                    .map(m -> m.fromCol)
+                    .distinct()
+                    .count() == group.size();
+
+            boolean rankDistinct = group.stream()
+                    .map(m -> m.fromRow)
+                    .distinct()
+                    .count() == group.size();
+
+            for (Move move : group) {
+                if (fileDistinct) {
+                    move.disambiguationFile = (char) ('a' + move.fromCol);
+                } else if (rankDistinct) {
+                    move.disambiguationRank = (char) ('0' + (8 - move.fromRow));
+                } else {
+                    move.disambiguationFile = (char) ('a' + move.fromCol);
+                    move.disambiguationRank = (char) ('0' + (8 - move.fromRow));
+                }
+            }
         }
     }
 }

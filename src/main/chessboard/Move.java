@@ -10,6 +10,8 @@ public class Move {
     public final int fromRow, fromCol, toRow, toCol;
     public boolean isCapture, isCheck, isCheckmate;
     public char promotionPiece;
+    public char disambiguationFile = '\0';
+    public char disambiguationRank = '\0';
 
     public Move(char piece, int fromRow, int fromCol, int toRow, int toCol, boolean isCapture) {
         this.piece = piece;
@@ -45,6 +47,8 @@ public class Move {
                 sj.add(isCapture ? "" + (char) ('a' + fromCol) : "");
             } else {
                 sj.add(Character.toString(Character.toUpperCase(piece)));
+                sj.add(disambiguationFile != '\0' ? String.valueOf(disambiguationFile) : "");
+                sj.add(disambiguationRank != '\0' ? String.valueOf(disambiguationRank) : "");
             }
             sj.add(isCapture ? "x" : "");
             sj.add("" + (char) ('a' + toCol));

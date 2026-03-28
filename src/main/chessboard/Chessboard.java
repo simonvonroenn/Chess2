@@ -30,7 +30,8 @@ public class Chessboard {
 
     private int selectedRow, selectedCol = -1;
 
-    private List<Move> legalMoves;
+    private List<Move> legalPlayerMovesForSelectedPiece;
+    private List<Move> allLegalPlayerMoves = new ArrayList<>();
 
     private static long debugStartTime = 0;
 
@@ -124,7 +125,15 @@ public class Chessboard {
     }
 
     /**
-     * Selects a piece and calculates all legal moves or deselects a piece.
+     * Precomputes all legal moves for the current player.
+     * Should be called once at the start of each player turn.
+     */
+    public void computeAllLegalMoves() {
+        allLegalPlayerMoves = Engine.generateAllLegalMoves(board);
+    }
+
+    /**
+     * Selects a piece and filters legal moves for it from the precomputed list.
      *
      * @param row the row, where the piece is
      * @param col the column, where the piece is
@@ -134,8 +143,11 @@ public class Chessboard {
         if (Character.isLetter(piece) && board.whiteToMove == Character.isUpperCase(piece) && (row != selectedRow || col != selectedCol)) {
             selectedRow = row;
             selectedCol = col;
-            legalMoves = LegalMoveGenerator.generateLegalMoves(board.deepCopy(), selectedRow, selectedCol, false);
-            for (Move move : legalMoves) {
+            // Filter from precomputed list instead of generating anew
+            legalPlayerMovesForSelectedPiece = allLegalPlayerMoves.stream()
+                    .filter(m -> m.fromRow == row && m.fromCol == col)
+                    .toList();
+            for (Move move : legalPlayerMovesForSelectedPiece) {
                 System.out.println(move.toString());
             }
         } else {
@@ -153,7 +165,7 @@ public class Chessboard {
     public boolean isLegalMove(int row, int col) {
         if (selectedRow == -1 || selectedCol == -1) return false;
 
-        for (Move move : legalMoves) {
+        for (Move move : legalPlayerMovesForSelectedPiece) {
             if (move.toRow == row && move.toCol == col) return true;
         }
         return false;
@@ -168,12 +180,17 @@ public class Chessboard {
      * @return the game outcome
      */
     public GameOutcome movePieceForPlayer(int toRow, int toCol) {
-        Move move = new Move(board.state[selectedRow][selectedCol], selectedRow, selectedCol, toRow, toCol, board.state[toRow][toCol] != '\0');
+        Move move = allLegalPlayerMoves.stream()
+                .filter(m -> m.fromRow == selectedRow && m.fromCol == selectedCol
+                        && m.toRow == toRow && m.toCol == toCol)
+                .findFirst()
+                .orElse(null);
 
         MakeMoveResult result = makeMove(board, move, false);
 
         playSounds(move);
         resetSelection();
+        allLegalPlayerMoves = new ArrayList<>();
 
         Engine.evaluatePosition(board); // for debugging
         printBoard();

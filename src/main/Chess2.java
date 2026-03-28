@@ -11,8 +11,8 @@ import java.util.List;
 public class Chess2 extends PApplet {
 
     /** The starting position. */
-    public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    //public static final String FEN = "1r3rk1/ppp1nppp/2nq4/4Nb2/2BPpP2/1R2P1P1/P1P4P/2BQR1K1 b - - 0 1";
+    //public static final String FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    public static final String FEN = "1r3rk1/ppp1nppp/2nq4/4Nb2/2BPpP2/1R2P1P1/P1P4P/2BQR1K1 b - - 0 1";
     /** Set to true if the user wants to play white; Set to false if the user wants to play black */
     public static final boolean playWhite = true;
 
@@ -48,16 +48,11 @@ public class Chess2 extends PApplet {
         // Make first move if it's the engines turn at the beginning
         if (chessboard.board.whiteToMove != playWhite) {
             new Thread(() -> {
-                try {
-                    Thread.sleep(1000); // wait 1 second, so that the player can observe the first move
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
                 chessboard.movePieceForEngine(engine);
+                chessboard.computeAllLegalMoves();
             }).start();
         } else {
-            chessboard.computeAllLegalMoves();
+            new Thread(chessboard::computeAllLegalMoves).start();
         }
     }
 

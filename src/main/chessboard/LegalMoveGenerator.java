@@ -147,39 +147,37 @@ public class LegalMoveGenerator {
         }
         // Castling moves
         // Only add castling moves if king is in its original position and not in check
+        boolean kingInCheck = isSquareAttacked(board, row, col, !board.whiteToMove);
+        if (kingInCheck) return;
         if (board.state[row][col] == 'K' && row == 7 && col == 4) {
             // White kingside castling
             if (board.whiteKingSideCastling &&
                     isEmpty(board, 7, 5) && isEmpty(board, 7, 6) &&
-                    !isSquareAttacked(board, 7, 4, false) &&
                     !isSquareAttacked(board, 7, 5, false) &&
                     !isSquareAttacked(board, 7, 6, false)) {
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, 7, 6, false));
+                moves.add(new Move('K', row, col, 7, 6, false));
             }
             // White queenside castling
             if (board.whiteQueenSideCastling &&
                     isEmpty(board, 7, 1) && isEmpty(board, 7, 2) && isEmpty(board, 7, 3) &&
-                    !isSquareAttacked(board, 7, 4, false) &&
                     !isSquareAttacked(board, 7, 3, false) &&
                     !isSquareAttacked(board, 7, 2, false)) {
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, 7, 2, false));
+                moves.add(new Move('K', row, col, 7, 2, false));
             }
         } else if (board.state[row][col] == 'k' && row == 0 && col == 4) {
             // Black kingside castling
             if (board.blackKingSideCastling &&
                     isEmpty(board, 0, 5) && isEmpty(board, 0, 6) &&
-                    !isSquareAttacked(board, 0, 4, true) &&
                     !isSquareAttacked(board, 0, 5, true) &&
                     !isSquareAttacked(board, 0, 6, true)) {
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, 0, 6, false));
+                moves.add(new Move('k', row, col, 0, 6, false));
             }
             // Black queenside castling
             if (board.blackQueenSideCastling &&
                     isEmpty(board, 0, 1) && isEmpty(board, 0, 2) && isEmpty(board, 0, 3) &&
-                    !isSquareAttacked(board, 0, 4, true) &&
                     !isSquareAttacked(board, 0, 3, true) &&
                     !isSquareAttacked(board, 0, 2, true)) {
-                moves.add(new Move(board.whiteToMove ? 'K' : 'k', row, col, 0, 2, false));
+                moves.add(new Move('k', row, col, 0, 2, false));
             }
         }
     }
@@ -238,75 +236,73 @@ public class LegalMoveGenerator {
      * @return true, if the square is attacked, otherwise false
      */
     private static boolean isSquareAttacked(BoardEnv board, int targetRow, int targetCol, boolean byWhite) {
-        for (int r = 0; r < 8; r++) {
-            for (int c = 0; c < 8; c++) {
-                char piece = board.state[r][c];
-                if (piece == '\0') continue;
-                if (Character.isUpperCase(piece) != byWhite) continue;
-                switch (Character.toLowerCase(piece)) {
-                    case 'p' -> {
-                        int direction = byWhite ? -1 : 1;
-                        if (targetRow == r + direction && (targetCol == c - 1 || targetCol == c + 1)) {
-                            return true;
-                        }
-                    }
-                    case 'n' -> {
-                        int[][] knightMoves = {{-2, -1}, {-2, 1}, {2, -1}, {2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}};
-                        for (int[] move : knightMoves) {
-                            if (r + move[0] == targetRow && c + move[1] == targetCol) return true;
-                        }
-                    }
-                    case 'b' -> {
-                        int[][] directionsDiag = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
-                        for (int[] d : directionsDiag) {
-                            int rr = r + d[0], cc = c + d[1];
-                            while (isNotOutOfBoard(rr, cc)) {
-                                if (rr == targetRow && cc == targetCol) return true;
-                                if (board.state[rr][cc] != '\0') break;
-                                rr += d[0]; cc += d[1];
-                            }
-                        }
-                    }
-                    case 'r' -> {
-                        int[][] directionsStraight = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-                        for (int[] d : directionsStraight) {
-                            int rr = r + d[0], cc = c + d[1];
-                            while (isNotOutOfBoard(rr, cc)) {
-                                if (rr == targetRow && cc == targetCol) return true;
-                                if (board.state[rr][cc] != '\0') break;
-                                rr += d[0]; cc += d[1];
-                            }
-                        }
-                    }
-                    case 'q' -> {
-                        int[][] directionsStraight = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-                        int[][] directionsDiag = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
-                        for (int[] d : directionsStraight) {
-                            int rr = r + d[0], cc = c + d[1];
-                            while (isNotOutOfBoard(rr, cc)) {
-                                if (rr == targetRow && cc == targetCol) return true;
-                                if (board.state[rr][cc] != '\0') break;
-                                rr += d[0]; cc += d[1];
-                            }
-                        }
-                        for (int[] d : directionsDiag) {
-                            int rr = r + d[0], cc = c + d[1];
-                            while (isNotOutOfBoard(rr, cc)) {
-                                if (rr == targetRow && cc == targetCol) return true;
-                                if (board.state[rr][cc] != '\0') break;
-                                rr += d[0]; cc += d[1];
-                            }
-                        }
-                    }
-                    case 'k' -> {
-                        int[][] kingMoves = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
-                        for (int[] move : kingMoves) {
-                            if (r + move[0] == targetRow && c + move[1] == targetCol) return true;
-                        }
-                    }
+        int pawnDir = byWhite ? 1 : -1;
+
+        // Straight rays — check first square for rook/queen/king, then continue for rook/queen
+        for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            int rr = targetRow + d[0], cc = targetCol + d[1];
+            if (!isNotOutOfBoard(rr, cc)) continue;
+            char piece = board.state[rr][cc];
+            if (piece != '\0') {
+                if (Character.isUpperCase(piece) == byWhite) {
+                    char p = Character.toLowerCase(piece);
+                    if (p == 'r' || p == 'q' || p == 'k') return true;
                 }
+                continue; // blocked, no need to continue ray
+            }
+            // First square empty — continue ray from second square for rook/queen only
+            rr += d[0]; cc += d[1];
+            while (isNotOutOfBoard(rr, cc)) {
+                piece = board.state[rr][cc];
+                if (piece != '\0') {
+                    if (Character.isUpperCase(piece) == byWhite) {
+                        char p = Character.toLowerCase(piece);
+                        if (p == 'r' || p == 'q') return true;
+                    }
+                    break;
+                }
+                rr += d[0]; cc += d[1];
             }
         }
+
+        // Diagonal rays — check first square for bishop/queen/king/pawn, then continue for bishop/queen
+        for (int[] d : new int[][]{{1, 1}, {1, -1}, {-1, 1}, {-1, -1}}) {
+            int rr = targetRow + d[0], cc = targetCol + d[1];
+            if (!isNotOutOfBoard(rr, cc)) continue;
+            char piece = board.state[rr][cc];
+            if (piece != '\0') {
+                if (Character.isUpperCase(piece) == byWhite) {
+                    char p = Character.toLowerCase(piece);
+                    if (p == 'b' || p == 'q' || p == 'k') return true;
+                    if (p == 'p' && d[0] == pawnDir) return true;
+                }
+                continue; // blocked
+            }
+            // First square empty — continue ray from second square for bishop/queen only
+            rr += d[0]; cc += d[1];
+            while (isNotOutOfBoard(rr, cc)) {
+                piece = board.state[rr][cc];
+                if (piece != '\0') {
+                    if (Character.isUpperCase(piece) == byWhite) {
+                        char p = Character.toLowerCase(piece);
+                        if (p == 'b' || p == 'q') return true;
+                    }
+                    break;
+                }
+                rr += d[0]; cc += d[1];
+            }
+        }
+
+        // Knights — L-shapes only, no sliding
+        for (int[] d : new int[][]{{-2, -1}, {-2, 1}, {2, -1}, {2, 1}, {-1, -2}, {1, -2}, {-1, 2}, {1, 2}}) {
+            int rr = targetRow + d[0], cc = targetCol + d[1];
+            if (!isNotOutOfBoard(rr, cc)) continue;
+            char piece = board.state[rr][cc];
+            if (piece != '\0' && Character.isUpperCase(piece) == byWhite && Character.toLowerCase(piece) == 'n') {
+                return true;
+            }
+        }
+
         return false;
     }
 

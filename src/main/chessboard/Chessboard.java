@@ -81,7 +81,7 @@ public class Chessboard {
      * Loads the opening database.
      */
     public void loadOpenings() {
-        try (BufferedReader reader = new BufferedReader(new FileReader("src/main/resources/openings/opening_db_693.txt"))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader("src/main/resources/openings/openings_db_3624.txt"))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 // Es wird angenommen, dass die Zeilen bereits ohne Häufigkeitsangabe vorliegen

@@ -231,6 +231,9 @@ public class Chessboard {
     public static MakeMoveResult makeMove(BoardEnv board, Move move, boolean skipPostMoveCalculations) {
         debugStartTime = System.currentTimeMillis();
 
+        // Remove old rights from zobrist hash
+        updateZobristHashRights(board);
+
         char capturedPiece = '\0';
         UndoInfo undoInfo = new UndoInfo(board, '\0');
         undoInfo.didPostMoveCalculations = !skipPostMoveCalculations;
@@ -300,6 +303,8 @@ public class Chessboard {
             board.blackKingPos = new int[]{move.toRow, move.toCol};
         }
 
+        updateZobristHash(board, move, undoInfo);
+
         // Change player
         board.whiteToMove = !board.whiteToMove;
 
@@ -309,7 +314,7 @@ public class Chessboard {
 
         GameOutcome outcome = postMoveCalculations(board, move, capturedPiece);
 
-        undoInfo.positionSignature = getBoardStateSignature(board);
+        undoInfo.postMoveZobristHash = board.zobristHash;
 
         return new MakeMoveResult(outcome, undoInfo);
     }
@@ -337,8 +342,7 @@ public class Chessboard {
         }
 
         // Update position repetition count
-        String state = getBoardStateSignature(board);
-        board.transpositionTable.put(state, board.transpositionTable.getOrDefault(state, 0) + 1);
+        board.transpositionTable.merge(board.zobristHash, 1, Integer::sum);
 
         Engine._debugTime_ApplyMove += System.currentTimeMillis() - debugStartTime;
 
@@ -346,7 +350,7 @@ public class Chessboard {
         if (board.halfMoveClock >= 100) {
             return GameOutcome.FIFTY_MOVE_RULE;
         }
-        if (board.transpositionTable.get(state) >= 3) {
+        if (board.transpositionTable.get(board.zobristHash) >= 3) {
             return GameOutcome.THREE_FOLD_REPETITION;
         }
         if (insufficientMaterial(board)) {
@@ -414,6 +418,70 @@ public class Chessboard {
         } else {
             board.enPassantTarget = null;
         }
+
+        // Insert new rights into zobrist hash
+        updateZobristHashRights(board);
+    }
+
+    /**
+     * Updates the Zobrist hash incrementally for a given move.
+     * Must be called after castling rights and en passant target have been
+     * removed from the hash, but before the new rights are added.
+     *
+     * <p>Handles all special cases:
+     * <ul>
+     *   <li>Normal moves — removes piece from origin, places it on destination</li>
+     *   <li>Captures — removes the captured piece from the hash</li>
+     *   <li>En passant — removes the captured pawn from its actual square</li>
+     *   <li>Promotion — places the promoted piece instead of the pawn</li>
+     *   <li>Castling — additionally moves the rook</li>
+     *   <li>Side to move — always toggled</li>
+     * </ul>
+     *
+     * @param board      the board state whose {@code zobristHash} is updated in-place
+     * @param move       the move being made
+     * @param undoInfo   the undo info containing {@code wasEnPassant} and
+     *                   {@code capturedPawnPos} for en passant detection,
+     *                   and {@code capturedPiece} for capture detection
+     */
+    private static void updateZobristHash(BoardEnv board, Move move, UndoInfo undoInfo) {
+        // Remove moving piece from origin square
+        board.zobristHash ^= ZobristTable.PIECE_SQUARE[ZobristTable.pieceIndex(move.piece)][move.fromRow * 8 + move.fromCol];
+
+        // Remove captured piece
+        if (undoInfo.capturedPiece != '\0') {
+            int capturedSq = undoInfo.wasEnPassant
+                    ? undoInfo.capturedPawnPos[0] * 8 + undoInfo.capturedPawnPos[1]
+                    : move.toRow * 8 + move.toCol;
+            board.zobristHash ^= ZobristTable.PIECE_SQUARE[ZobristTable.pieceIndex(undoInfo.capturedPiece)][capturedSq];
+        }
+
+        // Place piece on destination (promotion: use promoted piece instead of pawn)
+        char placedPiece = (move.promotionPiece != '\0') ? move.promotionPiece : move.piece;
+        board.zobristHash ^= ZobristTable.PIECE_SQUARE[ZobristTable.pieceIndex(placedPiece)][move.toRow * 8 + move.toCol];
+
+        // Castling: additionally move the rook
+        if (Character.toLowerCase(move.piece) == 'k' && Math.abs(move.toCol - move.fromCol) == 2) {
+            boolean kingside = move.toCol == 6;
+            int rookFromCol = kingside ? 7 : 0;
+            int rookToCol   = kingside ? 5 : 3;
+            char rook = Character.isUpperCase(move.piece) ? 'R' : 'r';
+            board.zobristHash ^= ZobristTable.PIECE_SQUARE[ZobristTable.pieceIndex(rook)][move.toRow * 8 + rookFromCol];
+            board.zobristHash ^= ZobristTable.PIECE_SQUARE[ZobristTable.pieceIndex(rook)][move.toRow * 8 + rookToCol];
+        }
+
+        // Toggle side to move
+        board.zobristHash ^= ZobristTable.SIDE_TO_MOVE;
+    }
+
+    private static void updateZobristHashRights(BoardEnv board) {
+        if (board.whiteKingSideCastling)  board.zobristHash ^= ZobristTable.CASTLING[0];
+        if (board.whiteQueenSideCastling) board.zobristHash ^= ZobristTable.CASTLING[1];
+        if (board.blackKingSideCastling)  board.zobristHash ^= ZobristTable.CASTLING[2];
+        if (board.blackQueenSideCastling) board.zobristHash ^= ZobristTable.CASTLING[3];
+        if (board.enPassantTarget != null) {
+            board.zobristHash ^= ZobristTable.EN_PASSANT_FILE[board.enPassantTarget[1]];
+        }
     }
 
     public static void unmakeMove(BoardEnv board, Move move, UndoInfo undo) {
@@ -427,6 +495,7 @@ public class Chessboard {
         board.enPassantTarget        = undo.enPassantTarget;
         board.whiteKingPos           = undo.whiteKingPos;
         board.blackKingPos           = undo.blackKingPos;
+        board.zobristHash            = undo.preMoveZobristHash;
         board.totalHalfMoveCount     = undo.totalHalfMoveCount;
 
         // Restore pieces
@@ -462,42 +531,14 @@ public class Chessboard {
 
         if (undo.didPostMoveCalculations) {
             // Undo transposition table and move history
-            String signature = undo.positionSignature;
-            int count = board.transpositionTable.getOrDefault(signature, 0) - 1;
-
-            if (count <= 0) board.transpositionTable.remove(signature);
-            else board.transpositionTable.put(signature, count);
+            int count = board.transpositionTable.getOrDefault(undo.postMoveZobristHash, 0) - 1;
+            if (count <= 0) board.transpositionTable.remove(undo.postMoveZobristHash);
+            else board.transpositionTable.put(undo.postMoveZobristHash, count);
 
             if (!board.playedMoves.isEmpty()) {
                 board.playedMoves.remove(board.playedMoves.size() - 1);
             }
         }
-    }
-
-    /**
-     * Generates a signature string representing the current board state,
-     * including piece positions, turn, castling rights, and en passant target.
-     */
-    private static String getBoardStateSignature(BoardEnv board) {
-        StringBuilder sb = new StringBuilder();
-        // Append board configuration
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                sb.append(board.state[i][j] == '\0' ? '.' : board.state[i][j]);
-            }
-        }
-        // Append current turn
-        sb.append(board.whiteToMove ? "w" : "b");
-        // Append castling rights from Chessboard.LegalMoveGenerator
-        if (board.whiteKingSideCastling) sb.append("K");
-        if (board.whiteQueenSideCastling) sb.append("Q");
-        if (board.blackKingSideCastling) sb.append("k");
-        if (board.blackQueenSideCastling) sb.append("q");
-        // Append en passant target if any
-        if (board.enPassantTarget != null) {
-            sb.append("ep").append(board.enPassantTarget[0]).append(board.enPassantTarget[1]);
-        }
-        return sb.toString();
     }
 
     /**

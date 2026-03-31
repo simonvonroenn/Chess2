@@ -22,8 +22,9 @@ public class UndoInfo {
     public boolean wasPromotion;
 
     public boolean didPostMoveCalculations;
-    public String positionSignature;
 
+    public long preMoveZobristHash;
+    public long postMoveZobristHash;
     public int totalHalfMoveCount;
 
     public UndoInfo(BoardEnv board, char capturedPiece) {
@@ -41,6 +42,7 @@ public class UndoInfo {
         this.whiteKingPos = board.whiteKingPos.clone();
         this.blackKingPos = board.blackKingPos.clone();
 
+        this.preMoveZobristHash = board.zobristHash;
         this.totalHalfMoveCount = board.totalHalfMoveCount;
 
         this.wasEnPassant = false;

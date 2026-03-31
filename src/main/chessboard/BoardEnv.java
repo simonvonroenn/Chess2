@@ -17,7 +17,8 @@ public class BoardEnv {
     public int halfMoveClock = 0; // Counts half moves since last pawn move or capture
     public int totalHalfMoveCount = 0;
     public List<Move> playedMoves = new ArrayList<>();
-    public final Map<String, Integer> transpositionTable = new java.util.HashMap<>();
+    public long zobristHash = 0L;
+    public final Map<Long, Integer> transpositionTable = new java.util.HashMap<>();
     public Integer evaluation;
     public int pieceValueSum;
     public int[] whiteKingPos;
@@ -56,6 +57,7 @@ public class BoardEnv {
         halfMoveClock = Integer.parseInt(FEN.split(" ")[4]);
         int[] evalInfo = Engine.evaluatePosition(this);
         pieceValueSum = evalInfo[1];
+        zobristHash = ZobristTable.computeHash(this);
     }
 
     public BoardEnv deepCopy() {
@@ -75,6 +77,7 @@ public class BoardEnv {
         copy.halfMoveClock = this.halfMoveClock;
         copy.totalHalfMoveCount = this.totalHalfMoveCount;
         copy.playedMoves = new ArrayList<>(this.playedMoves);
+        copy.zobristHash = this.zobristHash;
         copy.transpositionTable.putAll(this.transpositionTable);
         copy.evaluation = this.evaluation;
         copy.pieceValueSum = this.pieceValueSum;
